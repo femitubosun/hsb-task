@@ -1,7 +1,7 @@
 import { ListResponse } from '../types/list-response.type';
 
 export interface BaseRepositoryInterface<T> {
-  create(dto: T): Promise<T>;
+  create(dto: Partial<T>): Promise<T>;
 
   findOneById(
     id: string,

@@ -1,32 +1,51 @@
-import { User } from '@/modules/identity/users/entities/user.entity';
-import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Inject, Injectable } from '@nestjs/common';
+import type { IUserRepository } from './interfaces/user-repository.interface';
 
 @Injectable()
 export class UsersService {
   constructor(
-    @InjectModel(User.name) private readonly userModel: Model<User>,
+    @Inject('IUserRepository')
+    private readonly userRepository: IUserRepository,
   ) {}
 
   async findByEmail(email: string) {
-    return this.userModel.findOne({ email }).populate('provider').exec();
+    return this.userRepository.findOneByCondition({ email });
   }
 
   async create(input: {
     name: string;
     email: string;
     password: string;
-    role: string;
+    // role: string;
   }) {
-    const { role, ...rest } = input;
-
-    const newUser = new this.userModel({ ...rest, role });
-
-    return newUser.save();
+    return this.userRepository.create(input);
   }
 
-  async findById(id: string) {
-    return this.userModel.findById(id).populate('provider').exec();
+  findById(id: string) {
+    return this.userRepository.findOneById(id);
+  }
+
+  async findAll(condition: object = {}, options?: object) {
+    return this.userRepository.findAll(condition, options);
+  }
+
+  async update(
+    id: string,
+    updateData: Partial<{
+      name: string;
+      email: string;
+      password: string;
+      role: string;
+    }>,
+  ) {
+    return this.userRepository.update(id, updateData as any);
+  }
+
+  async softDelete(id: string) {
+    return this.userRepository.softDelete(id);
+  }
+
+  async hardDelete(id: string) {
+    return this.userRepository.hardDelete(id);
   }
 }
