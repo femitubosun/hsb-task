@@ -1,4 +1,5 @@
 import { CacheService } from '@/lib/cache/cache.service';
+import { FetchInput } from '@/lib/cache/dto';
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Types } from 'mongoose';
@@ -7,7 +8,6 @@ import { ServiceDocument } from '../../common/entities/service.entity';
 import type { IServiceRepository } from '../../common/interfaces/service-repository.interface';
 import { UpdateServiceRequestDto } from '../dtos/request';
 import { ServicesService } from './services.service';
-
 describe('ServicesService', () => {
   let service: ServicesService;
   let repository: IServiceRepository;
@@ -122,9 +122,11 @@ describe('ServicesService', () => {
     it('should return cached list of services for a business', async () => {
       const mockServices = [mockService, { ...mockService, name: 'Massage' }];
 
-      mockCacheService.fetch.mockImplementation(async ({ resolver }) => {
-        return resolver();
-      });
+      mockCacheService.fetch.mockImplementation(
+        async <T>({ resolver }: FetchInput<T>) => {
+          return resolver();
+        },
+      );
       mockServiceRepository.findMany.mockResolvedValue(mockServices);
 
       const result = await service.list(businessId);
@@ -137,9 +139,11 @@ describe('ServicesService', () => {
     });
 
     it('should return empty array when no services exist', async () => {
-      mockCacheService.fetch.mockImplementation(async ({ resolver }) => {
-        return resolver();
-      });
+      mockCacheService.fetch.mockImplementation(
+        async <T>({ resolver }: FetchInput<T>) => {
+          return resolver();
+        },
+      );
       mockServiceRepository.findMany.mockResolvedValue([]);
 
       const result = await service.list(businessId);
@@ -163,9 +167,11 @@ describe('ServicesService', () => {
 
   describe('getById', () => {
     it('should return cached service by id when it exists', async () => {
-      mockCacheService.fetch.mockImplementation(async ({ resolver }) => {
-        return resolver();
-      });
+      mockCacheService.fetch.mockImplementation(
+        async <T>({ resolver }: FetchInput<T>) => {
+          return resolver();
+        },
+      );
       mockServiceRepository.findOneById.mockResolvedValue(mockService);
 
       const result = await service.getById(businessId, serviceId);
@@ -176,9 +182,11 @@ describe('ServicesService', () => {
     });
 
     it('should throw NotFoundException when service does not exist', async () => {
-      mockCacheService.fetch.mockImplementation(async ({ resolver }) => {
-        return resolver();
-      });
+      mockCacheService.fetch.mockImplementation(
+        async <T>({ resolver }: FetchInput<T>) => {
+          return resolver();
+        },
+      );
       mockServiceRepository.findOneById.mockResolvedValue(null);
 
       await expect(service.getById(businessId, serviceId)).rejects.toThrow(
@@ -195,9 +203,11 @@ describe('ServicesService', () => {
         businessId: new Types.ObjectId('507f1f77bcf86cd799439999'),
       };
 
-      mockCacheService.fetch.mockImplementation(async ({ resolver }) => {
-        return resolver();
-      });
+      mockCacheService.fetch.mockImplementation(
+        async <T>({ resolver }: FetchInput<T>) => {
+          return resolver();
+        },
+      );
       mockServiceRepository.findOneById.mockResolvedValue(
         differentBusinessService,
       );
@@ -290,7 +300,7 @@ describe('ServicesService', () => {
         serviceId,
         activeUpdateDto,
       );
-      expect(result.isActive).toBe(false);
+      expect(result?.isActive).toBe(false);
     });
 
     it('should handle repository update errors', async () => {
@@ -369,8 +379,8 @@ describe('ServicesService', () => {
 
       mockServiceRepository.create.mockResolvedValue(createdService);
       mockCacheService.invalidateByTag.mockResolvedValue(undefined);
-      mockCacheService.fetch.mockImplementation(async ({ resolver }) =>
-        resolver(),
+      mockCacheService.fetch.mockImplementation(
+        async <T>({ resolver }: FetchInput<T>) => resolver(),
       );
       mockServiceRepository.findOneById.mockResolvedValue(createdService);
       mockServiceRepository.update.mockResolvedValue(updatedService);
@@ -383,7 +393,7 @@ describe('ServicesService', () => {
       expect(found).toEqual(createdService);
 
       const updated = await service.update(businessId, serviceId, updateDto);
-      expect(updated.price).toBe(40.0);
+      expect(updated?.price).toBe(40.0);
 
       await service.delete(businessId, serviceId);
 
@@ -400,8 +410,8 @@ describe('ServicesService', () => {
         { ...mockService, _id: new Types.ObjectId(), name: 'Manicure' },
       ];
 
-      mockCacheService.fetch.mockImplementation(async ({ resolver }) =>
-        resolver(),
+      mockCacheService.fetch.mockImplementation(
+        async <T>({ resolver }: FetchInput<T>) => resolver(),
       );
       mockServiceRepository.findMany.mockResolvedValue(services);
 

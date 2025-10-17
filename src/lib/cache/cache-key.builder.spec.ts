@@ -484,7 +484,7 @@ describe('CacheKey', () => {
 
       const result = cacheKey.toString();
       expect(result).toContain('complex=');
-      
+
       const sortedComplexObject = {
         array: [1, 2, 3],
         nested: { value: 'test' },
