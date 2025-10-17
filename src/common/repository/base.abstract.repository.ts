@@ -26,7 +26,7 @@ export abstract class BaseRepositoryAbstract<T extends BaseEntity>
   }
 
   async findOneByCondition(condition = {}): Promise<T | null> {
-    return await this.model
+    return this.model
       .findOne({
         ...condition,
         deletedAt: null,

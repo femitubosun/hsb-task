@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { IUserRepository } from './interfaces/user-repository.interface';
 import { CreateUserDto, UserRoles } from './dtos/create-user.dto';
 import { hashInput } from '@/common/utils/hash.utils';
+import { UserDocument } from '@/modules/identity/users/entities/user.entity';
 
 @Injectable()
 export class UsersService {
@@ -10,7 +11,7 @@ export class UsersService {
     private readonly userRepository: IUserRepository,
   ) {}
 
-  async create(input: CreateUserDto) {
+  async create(input: CreateUserDto): Promise<UserDocument> {
     const { password, ...rest } = input;
 
     return this.userRepository.create({

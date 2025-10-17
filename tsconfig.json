@@ -30,6 +30,9 @@
       ],
       "@infra/*": [
         "src/infra"
+      ],
+      "@modules/*": [
+        "src/modules"
       ]
     }
   }

@@ -2,7 +2,7 @@ import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigService } from './core/config/config.service';
-import { setupSwagger } from './swagger';
+import { setupApiDocumentation } from './swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -13,10 +13,10 @@ async function bootstrap() {
   const port = configService.env('PORT');
 
   app.setGlobalPrefix('api/v1', {
-    exclude: ['/api/docs', '/api/docs/json'],
+    exclude: ['/api/docs', '/api/docs/json', '/api/docs/ref'],
   });
   app.useGlobalPipes(new ValidationPipe());
-  setupSwagger({
+  setupApiDocumentation({
     appName,
     app,
     version: '1.0',

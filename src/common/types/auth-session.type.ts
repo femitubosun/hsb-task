@@ -1,16 +1,13 @@
-// import { UserDocument } from '@/identity/users/schemas/user.schema';
+import { UserDocument } from '@/modules/identity/users/entities/user.entity';
 
 export type AuthSessionType = {
   user: SessionUser;
   version: number;
 };
 
-export type SessionUser = Pick<
-  { email: string; name: string; role: string },
-  'email' | 'name' | 'role'
-> & {
+export type SessionUser = Pick<UserDocument, 'email' | 'name' | 'role'> & {
   _id: string;
-  provider?: {
+  business?: {
     _id: string;
     name: string;
   };

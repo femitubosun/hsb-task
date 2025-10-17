@@ -1,4 +1,4 @@
 import { BaseRepositoryInterface } from '@/common/repository/base.interface.repository';
-import { User } from '../entities/user.entity';
+import { UserDocument } from '../entities/user.entity';
 
-export type IUserRepository = BaseRepositoryInterface<User>;
+export type IUserRepository = BaseRepositoryInterface<UserDocument>;
