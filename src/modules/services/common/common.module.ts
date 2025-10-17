@@ -12,7 +12,7 @@ const ENTITIES = [
 ];
 
 @Module({
-  imports: [MongooseModule.forFeature(ENTITIES), CommonModule],
+  imports: [MongooseModule.forFeature(ENTITIES)],
   providers: [
     ServicesService,
     {

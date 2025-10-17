@@ -19,7 +19,7 @@ export class User extends BaseEntity {
   @Prop()
   password: string;
 
-  @Prop({ enum: ['admin', 'business', 'client'] })
+  @Prop({ type: String, enum: ['admin', 'business', 'client'] })
   role: Roles;
 }
 
