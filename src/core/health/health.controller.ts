@@ -1,4 +1,4 @@
-import { Public } from '@/core/decorators';
+import { Public } from '@/common/decorators';
 import { Controller, Get } from '@nestjs/common';
 import { HealthCheck } from '@nestjs/terminus';
 import { HealthService } from './health.service';

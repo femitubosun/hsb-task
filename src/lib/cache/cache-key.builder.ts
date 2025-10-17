@@ -1,4 +1,4 @@
-import { toCamelCase } from '@/core/utils/string.utils';
+import { toCamelCase } from '@/common/utils/string.utils';
 
 export class CacheKey {
   private segments: string[] = [];

@@ -1,5 +1,5 @@
 import { ConfigService } from '@/core/config/config.service';
-import { toKebabCase } from '@/core/utils/string.utils';
+import { toKebabCase } from '@/common/utils/string.utils';
 import { RedisService } from '@/infra/redis/redis.service';
 import { RedisClientType } from '@nestjs-labs/nestjs-redis';
 import { Injectable, Logger } from '@nestjs/common';
