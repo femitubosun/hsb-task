@@ -46,7 +46,7 @@ export class ServiceController {
     @Param('id') id: string,
     @AuthBusiness() business: SessionUser['business'],
   ) {
-    return this.servicesService.getServicebyId(business!._id, id);
+    return this.servicesService.getById(business!._id, id);
   }
 
   @Patch(':id')
@@ -55,7 +55,7 @@ export class ServiceController {
     @AuthBusiness() business: SessionUser['business'],
     @Body() body: UpdateServiceRequestDto,
   ) {
-    return this.servicesService.updateService(business!._id, id, body);
+    return this.servicesService.update(business!._id, id, body);
   }
 
   @Delete(':id')
@@ -64,6 +64,6 @@ export class ServiceController {
     @Param('id') id: string,
     @AuthBusiness() business: SessionUser['business'],
   ) {
-    await this.servicesService.deleteService(business!._id, id);
+    await this.servicesService.delete(business!._id, id);
   }
 }

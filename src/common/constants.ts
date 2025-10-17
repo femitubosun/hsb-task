@@ -4,5 +4,5 @@ export const AppModules = Object.freeze({
   AUTH: 'auth',
   USERS: 'users',
   PROFILE: 'profile',
-  SERVICE: 'service',
+  SERVICES: 'services',
 } as const);
