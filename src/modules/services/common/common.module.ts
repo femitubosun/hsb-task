@@ -20,6 +20,6 @@ const ENTITIES = [
       useClass: ServiceRepository,
     },
   ],
-  exports: [ServicesService],
+  exports: [ServicesService, 'IServicesRepository'],
 })
 export class CommonModule {}

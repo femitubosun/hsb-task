@@ -11,12 +11,13 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import { ServicesService } from '../../common/services/services.service';
+
 import {
   CreateServiceRequestDto,
   UpdateServiceRequestDto,
 } from '../dtos/request';
 import { ServiceResponseDto } from '../dtos/response';
+import { ServicesService } from '../services/services.service';
 
 @AllowedRoles(['business'])
 @Controller('services')
@@ -37,7 +38,7 @@ export class ServiceController {
 
   @Get()
   async list(@AuthBusiness() business: SessionUser['business']) {
-    return this.servicesService.listByBusinessId(business!._id);
+    return this.servicesService.list(business!._id);
   }
 
   @Get(':id')
@@ -45,7 +46,7 @@ export class ServiceController {
     @Param('id') id: string,
     @AuthBusiness() business: SessionUser['business'],
   ) {
-    return this.servicesService.getBusinessServicebyId(business!._id, id);
+    return this.servicesService.getServicebyId(business!._id, id);
   }
 
   @Patch(':id')
@@ -54,7 +55,7 @@ export class ServiceController {
     @AuthBusiness() business: SessionUser['business'],
     @Body() body: UpdateServiceRequestDto,
   ) {
-    return this.servicesService.updateBusinessService(business!._id, id, body);
+    return this.servicesService.updateService(business!._id, id, body);
   }
 
   @Delete(':id')
@@ -63,6 +64,6 @@ export class ServiceController {
     @Param('id') id: string,
     @AuthBusiness() business: SessionUser['business'],
   ) {
-    await this.servicesService.deleteBusinessService(business!._id, id);
+    await this.servicesService.deleteService(business!._id, id);
   }
 }
