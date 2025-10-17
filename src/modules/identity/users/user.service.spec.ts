@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UserDocument } from './entities/user.entity';
 import { IUserRepository } from './interfaces/user-repository.interface';
 import { UsersService } from './user.service';
+import { UserRoles } from './dtos/create-user.dto';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -12,7 +13,7 @@ describe('UsersService', () => {
     name: 'John Doe',
     email: 'john@example.com',
     password: 'hashed_password',
-    role: 'business',
+    role: UserRoles.BUSINESS,
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
@@ -77,6 +78,7 @@ describe('UsersService', () => {
         name: 'Jane Doe',
         email: 'jane@example.com',
         password: 'password123',
+        role: UserRoles.BUSINESS,
       };
 
       mockUserRepository.create.mockResolvedValue({
@@ -183,7 +185,6 @@ describe('UsersService', () => {
       const updateDto = {
         name: 'New Name',
         email: 'newemail@example.com',
-        role: 'admin',
       };
 
       mockUserRepository.update.mockResolvedValue({

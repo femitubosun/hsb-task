@@ -1,5 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { IUserRepository } from './interfaces/user-repository.interface';
+import { CreateUserDto, UserRoles } from './dtos/create-user.dto';
+import { hashInput } from '@/common/utils/hash.utils';
 
 @Injectable()
 export class UsersService {
@@ -8,17 +10,17 @@ export class UsersService {
     private readonly userRepository: IUserRepository,
   ) {}
 
-  async findByEmail(email: string) {
-    return this.userRepository.findOneByCondition({ email });
+  async create(input: CreateUserDto) {
+    const { password, ...rest } = input;
+
+    return this.userRepository.create({
+      ...rest,
+      password: await hashInput(password),
+    });
   }
 
-  async create(input: {
-    name: string;
-    email: string;
-    password: string;
-    // role: string;
-  }) {
-    return this.userRepository.create(input);
+  async findByEmail(email: string) {
+    return this.userRepository.findOneByCondition({ email });
   }
 
   findById(id: string) {
@@ -35,10 +37,10 @@ export class UsersService {
       name: string;
       email: string;
       password: string;
-      role: string;
+      role: UserRoles;
     }>,
   ) {
-    return this.userRepository.update(id, updateData as any);
+    return this.userRepository.update(id, updateData);
   }
 
   async softDelete(id: string) {
