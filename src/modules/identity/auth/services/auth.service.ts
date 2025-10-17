@@ -16,7 +16,6 @@ import { AuthResponseDto } from '../dtos/response';
 import { SessionService } from '@/modules/identity/auth/services/session.service';
 
 import { verifyHash } from '@/common/utils/hash.utils';
-import { UserRoles } from '@/modules/identity/users/dtos/create-user.dto';
 import {
   INVALID_CREDENTIALS,
   SOMETHING_WENT_WRONG,
@@ -51,7 +50,7 @@ export class AuthService {
 
     const user = await this.userService.create({
       ...input,
-      role: UserRoles.BUSINESS,
+      role: 'business',
     });
 
     await this.businessService.create({
@@ -91,7 +90,7 @@ export class AuthService {
 
     const user = await this.userService.create({
       ...input,
-      role: UserRoles.CLIENT,
+      role: 'client',
     });
 
     if (!user) {

@@ -1,8 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { IUserRepository } from '../interfaces/user-repository.interface';
-import { CreateUserDto, UserRoles } from '../dtos/create-user.dto';
+import { CreateUserDto } from '../dtos/create-user.dto';
 import { hashInput } from '@/common/utils/hash.utils';
 import { UserDocument } from '@/modules/identity/users/entities/user.entity';
+import { Roles } from '@/common/types/roles.type';
 
 @Injectable()
 export class UsersService {
@@ -38,7 +39,7 @@ export class UsersService {
       name: string;
       email: string;
       password: string;
-      role: UserRoles;
+      role: Roles;
     }>,
   ) {
     return this.userRepository.update(id, updateData);

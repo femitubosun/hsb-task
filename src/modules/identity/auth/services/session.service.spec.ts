@@ -4,7 +4,6 @@ import { ConfigService } from '@core/config/config.service';
 import { NodeEnvironment } from '@core/config/env/env.schema';
 import { AuthSessionType, SessionUser } from '@/common/types/auth-session.type';
 import { SessionService } from './session.service';
-import { UserRoles } from '@/modules/identity/users/dtos/create-user.dto';
 
 describe('SessionService', () => {
   let service: SessionService;
@@ -15,7 +14,7 @@ describe('SessionService', () => {
     _id: '507f1f77bcf86cd799439011',
     name: 'John Doe',
     email: 'john@example.com',
-    role: UserRoles.BUSINESS,
+    role: 'business',
     business: {
       _id: 'business123',
       name: 'Test Business',
@@ -118,7 +117,7 @@ describe('SessionService', () => {
         _id: '507f1f77bcf86cd799439012',
         name: 'Jane Doe',
         email: 'jane@example.com',
-        role: UserRoles.BUSINESS,
+        role: 'business',
       };
 
       mockConfigService.env

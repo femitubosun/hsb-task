@@ -17,7 +17,6 @@ import {
   SignupBusinessRequestDto,
   SignupRequestDto,
 } from '../dtos/request';
-import { UserRoles } from '@/modules/identity/users/dtos/create-user.dto';
 import { UserDocument } from '@/modules/identity/users/entities/user.entity';
 import { AuthSessionType, SessionUser } from '@/common/types/auth-session.type';
 import {
@@ -43,7 +42,7 @@ describe('AuthService', () => {
     name: 'John Doe',
     email: 'john@example.com',
     password: '$2b$10$hashedpassword',
-    role: UserRoles.BUSINESS,
+    role: 'business',
     createdAt: new Date('2023-01-01T00:00:00.000Z'),
     updatedAt: new Date('2023-01-01T00:00:00.000Z'),
     deletedAt: null,
@@ -61,7 +60,7 @@ describe('AuthService', () => {
     _id: '507f1f77bcf86cd799439011',
     name: 'John Doe',
     email: 'john@example.com',
-    role: UserRoles.BUSINESS,
+    role: 'business',
   };
 
   const mockBusinessSessionUser: SessionUser = {
@@ -172,7 +171,7 @@ describe('AuthService', () => {
 
   describe('signupBusiness', () => {
     it('should create a business user successfully', async () => {
-      const createdUser = { ...mockUser, role: UserRoles.BUSINESS };
+      const createdUser = { ...mockUser, role: 'business' };
       const businessUserWithBusiness = { ...mockBusinessUser };
 
       mockUserService.findByEmail.mockResolvedValue(null);
@@ -189,7 +188,7 @@ describe('AuthService', () => {
       );
       expect(mockUserService.create).toHaveBeenCalledWith({
         ...mockSignupBusinessRequestDto,
-        role: UserRoles.BUSINESS,
+        role: 'business',
       });
       expect(mockBusinessService.create).toHaveBeenCalledWith({
         userId: createdUser._id,
@@ -219,7 +218,7 @@ describe('AuthService', () => {
     });
 
     it('should throw InternalServerErrorException if user creation fails', async () => {
-      const createdUser = { ...mockUser, role: UserRoles.BUSINESS };
+      const createdUser = { ...mockUser, role: 'business' };
 
       mockUserService.findByEmail.mockResolvedValue(null);
       mockUserService.create.mockResolvedValue(createdUser);
@@ -236,7 +235,7 @@ describe('AuthService', () => {
     });
 
     it('should handle business service creation errors', async () => {
-      const createdUser = { ...mockUser, role: UserRoles.BUSINESS };
+      const createdUser = { ...mockUser, role: 'business' };
 
       mockUserService.findByEmail.mockResolvedValue(null);
       mockUserService.create.mockResolvedValue(createdUser);
@@ -263,7 +262,7 @@ describe('AuthService', () => {
 
       expect(mockUserService.create).toHaveBeenCalledWith({
         ...mockSignupBusinessRequestDto,
-        role: UserRoles.BUSINESS,
+        role: 'business',
       });
       expect(mockBusinessService.create).not.toHaveBeenCalled();
     });
@@ -271,12 +270,12 @@ describe('AuthService', () => {
 
   describe('signupClient', () => {
     it('should create a client user successfully', async () => {
-      const createdUser = { ...mockUser, role: UserRoles.CLIENT };
+      const createdUser = { ...mockUser, role: 'client' };
       const expectedSessionUser: SessionUser = {
         _id: String(createdUser._id),
         name: createdUser.name,
         email: createdUser.email,
-        role: createdUser.role,
+        role: createdUser.role as 'client',
       };
 
       mockUserService.findByEmail.mockResolvedValue(null);
@@ -294,7 +293,7 @@ describe('AuthService', () => {
       );
       expect(mockUserService.create).toHaveBeenCalledWith({
         ...mockSignupRequestDto,
-        role: UserRoles.CLIENT,
+        role: 'client',
       });
       expect(result).toEqual({
         token: 'mock-jwt-token',
@@ -325,7 +324,7 @@ describe('AuthService', () => {
 
       expect(mockUserService.create).toHaveBeenCalledWith({
         ...mockSignupRequestDto,
-        role: UserRoles.CLIENT,
+        role: 'client',
       });
     });
 
@@ -339,12 +338,12 @@ describe('AuthService', () => {
 
       expect(mockUserService.create).toHaveBeenCalledWith({
         ...mockSignupRequestDto,
-        role: UserRoles.CLIENT,
+        role: 'client',
       });
     });
 
     it('should handle different user roles correctly', async () => {
-      const roles = [UserRoles.CLIENT, UserRoles.ADMIN];
+      const roles = ['client', 'admin'];
 
       for (const role of roles) {
         const createdUser = { ...mockUser, role };
@@ -360,7 +359,7 @@ describe('AuthService', () => {
 
         expect(mockUserService.create).toHaveBeenCalledWith({
           ...mockSignupRequestDto,
-          role: UserRoles.CLIENT,
+          role: 'client',
         });
       }
     });
@@ -512,7 +511,7 @@ describe('AuthService', () => {
       const users = [
         mockSessionUser,
         mockBusinessSessionUser,
-        { ...mockSessionUser, role: UserRoles.ADMIN },
+        { ...mockSessionUser, role: 'admin' as const },
       ];
 
       mockSessionService.invalidate.mockResolvedValue(undefined);
@@ -528,7 +527,7 @@ describe('AuthService', () => {
         _id: '507f1f77bcf86cd799439013',
         name: 'Client User',
         email: 'client@example.com',
-        role: UserRoles.CLIENT,
+        role: 'client',
       };
 
       mockSessionService.invalidate.mockResolvedValue(undefined);
@@ -716,7 +715,7 @@ describe('AuthService', () => {
     });
 
     it('should handle business user complete flow', async () => {
-      const createdUser = { ...mockUser, role: UserRoles.BUSINESS };
+      const createdUser = { ...mockUser, role: 'business' };
 
       mockUserService.findByEmail
         .mockResolvedValueOnce(null)

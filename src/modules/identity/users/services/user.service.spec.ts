@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UserDocument } from '../entities/user.entity';
 import { IUserRepository } from '../interfaces/user-repository.interface';
 import { UsersService } from './user.service';
-import { CreateUserDto, UserRoles } from '../dtos/create-user.dto';
+import { CreateUserDto } from '../dtos/create-user.dto';
 import * as hashUtils from '@/common/utils/hash.utils';
 
 jest.mock('@/common/utils/hash.utils');
@@ -18,7 +18,7 @@ describe('UsersService', () => {
     name: 'John Doe',
     email: 'john@example.com',
     password: '$2b$10$hashedpassword',
-    role: UserRoles.BUSINESS,
+    role: 'business',
     createdAt: new Date('2023-01-01T00:00:00.000Z'),
     updatedAt: new Date('2023-01-01T00:00:00.000Z'),
     deletedAt: null,
@@ -28,7 +28,7 @@ describe('UsersService', () => {
     name: 'Jane Doe',
     email: 'jane@example.com',
     password: 'password123',
-    role: UserRoles.BUSINESS,
+    role: 'business',
   };
 
   const mockUserRepository = {
@@ -88,7 +88,7 @@ describe('UsersService', () => {
     });
 
     it('should handle different user roles', async () => {
-      const roles = [UserRoles.ADMIN, UserRoles.BUSINESS, UserRoles.CLIENT];
+      const roles = ['admin', 'business', 'client'] as const;
 
       for (const role of roles) {
         const userDto = { ...mockCreateUserDto, role };
@@ -245,7 +245,7 @@ describe('UsersService', () => {
     it('should return paginated list of users with condition', async () => {
       mockUserRepository.findAll.mockResolvedValue(mockPaginatedResponse);
 
-      const condition = { role: UserRoles.BUSINESS };
+      const condition = { role: 'business' };
       const result = await service.findAll(condition);
 
       expect(mockUserRepository.findAll).toHaveBeenCalledWith(
@@ -260,7 +260,7 @@ describe('UsersService', () => {
       const mockResponse = { count: 10, items: [mockUser] };
       mockUserRepository.findAll.mockResolvedValue(mockResponse);
 
-      const condition = { role: UserRoles.ADMIN };
+      const condition = { role: 'admin' };
       const options = { limit: 10, skip: 0 };
 
       const result = await service.findAll(condition, options);
@@ -293,7 +293,7 @@ describe('UsersService', () => {
 
     it('should handle complex conditions', async () => {
       const complexCondition = {
-        role: UserRoles.BUSINESS,
+        role: 'business',
         deletedAt: null,
         createdAt: { $gte: new Date('2023-01-01') },
       };
@@ -345,7 +345,7 @@ describe('UsersService', () => {
       const updateDto = {
         name: 'New Name',
         email: 'newemail@example.com',
-        role: UserRoles.ADMIN,
+        role: 'admin' as const,
       };
 
       const updatedUser = { ...mockUser, ...updateDto };
@@ -372,7 +372,7 @@ describe('UsersService', () => {
     });
 
     it('should handle role changes', async () => {
-      const roles = [UserRoles.ADMIN, UserRoles.BUSINESS, UserRoles.CLIENT];
+      const roles = ['admin', 'business', 'client'] as const;
 
       for (const role of roles) {
         const updateDto = { role };

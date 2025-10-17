@@ -1,22 +1,8 @@
-import { IsEmail, IsEnum, IsString } from 'class-validator';
+import { Roles } from '@/common/types/roles.type';
 
-export enum UserRoles {
-  ADMIN = 'admin',
-  BUSINESS = 'business',
-  CLIENT = 'client',
-}
-
-export class CreateUserDto {
-  @IsString()
+export type CreateUserDto = {
   name: string;
-
-  @IsString()
-  @IsEmail()
   email: string;
-
-  @IsString()
   password: string;
-
-  @IsEnum(UserRoles)
-  role: UserRoles;
-}
+  role: Roles;
+};
