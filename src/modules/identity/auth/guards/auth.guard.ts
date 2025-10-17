@@ -8,11 +8,11 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 
+import { IS_PUBLIC_KEY } from '@/common/decorators';
+import { AuthedRequest } from '@/common/types/authed-request.type';
+import { JwtPayloadType } from '@/common/types/jwt-payload.type';
 import { ConfigService } from '@/core/config/config.service';
 import { SessionService } from '@/modules/identity/auth/services';
-import { IS_PUBLIC_KEY } from '@/common/decorators';
-import { JwtPayloadType } from '@/common/types/jwt-payload.type';
-import { AuthedRequest } from '@/common/types/authed-request.type';
 
 @Injectable()
 export class AuthGuard implements CanActivate {

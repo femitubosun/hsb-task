@@ -1,9 +1,9 @@
-import { Inject, Injectable } from '@nestjs/common';
-import type { IUserRepository } from '../interfaces/user-repository.interface';
-import { CreateUserDto } from '../dtos/create-user.dto';
+import { Roles } from '@/common/types/roles.type';
 import { hashInput } from '@/common/utils/hash.utils';
 import { UserDocument } from '@/modules/identity/users/entities/user.entity';
-import { Roles } from '@/common/types/roles.type';
+import { Inject, Injectable } from '@nestjs/common';
+import { CreateUserDto } from '../dtos/create-user.dto';
+import type { IUserRepository } from '../interfaces/user-repository.interface';
 
 @Injectable()
 export class UsersService {
@@ -22,15 +22,19 @@ export class UsersService {
   }
 
   async findByEmail(email: string) {
-    return this.userRepository.findOneByCondition({ email });
+    return this.userRepository.findOneByCondition({ email }, undefined, {
+      populate: 'business',
+    });
   }
 
   findById(id: string) {
-    return this.userRepository.findOneById(id);
+    return this.userRepository.findOneById(id, undefined, {
+      populate: 'business',
+    });
   }
 
   async findAll(condition: object = {}, options?: object) {
-    return this.userRepository.findAll(condition, options);
+    return this.userRepository.findMany(condition, options);
   }
 
   async update(

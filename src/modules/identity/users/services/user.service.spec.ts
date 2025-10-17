@@ -1,9 +1,9 @@
+import * as hashUtils from '@/common/utils/hash.utils';
 import { Test, TestingModule } from '@nestjs/testing';
+import { CreateUserDto } from '../dtos/create-user.dto';
 import { UserDocument } from '../entities/user.entity';
 import { IUserRepository } from '../interfaces/user-repository.interface';
 import { UsersService } from './user.service';
-import { CreateUserDto } from '../dtos/create-user.dto';
-import * as hashUtils from '@/common/utils/hash.utils';
 
 jest.mock('@/common/utils/hash.utils');
 
@@ -35,7 +35,7 @@ describe('UsersService', () => {
     create: jest.fn(),
     findOneById: jest.fn(),
     findOneByCondition: jest.fn(),
-    findAll: jest.fn(),
+    findMany: jest.fn(),
     update: jest.fn(),
     softDelete: jest.fn(),
     hardDelete: jest.fn(),
@@ -140,9 +140,11 @@ describe('UsersService', () => {
 
       const result = await service.findByEmail('john@example.com');
 
-      expect(mockUserRepository.findOneByCondition).toHaveBeenCalledWith({
-        email: 'john@example.com',
-      });
+      expect(mockUserRepository.findOneByCondition).toHaveBeenCalledWith(
+        { email: 'john@example.com' },
+        undefined,
+        { populate: 'business' },
+      );
       expect(result).toEqual(mockUser);
     });
 
@@ -151,9 +153,11 @@ describe('UsersService', () => {
 
       const result = await service.findByEmail('notfound@example.com');
 
-      expect(mockUserRepository.findOneByCondition).toHaveBeenCalledWith({
-        email: 'notfound@example.com',
-      });
+      expect(mockUserRepository.findOneByCondition).toHaveBeenCalledWith(
+        { email: 'notfound@example.com' },
+        undefined,
+        { populate: 'business' },
+      );
       expect(result).toBeNull();
     });
 
@@ -179,9 +183,11 @@ describe('UsersService', () => {
 
       for (const email of emails) {
         await service.findByEmail(email);
-        expect(mockUserRepository.findOneByCondition).toHaveBeenCalledWith({
-          email,
-        });
+        expect(mockUserRepository.findOneByCondition).toHaveBeenCalledWith(
+          { email },
+          undefined,
+          { populate: 'business' },
+        );
       }
     });
   });
@@ -194,6 +200,8 @@ describe('UsersService', () => {
 
       expect(mockUserRepository.findOneById).toHaveBeenCalledWith(
         '507f1f77bcf86cd799439011',
+        undefined,
+        { populate: 'business' },
       );
       expect(result).toEqual(mockUser);
     });
@@ -205,6 +213,8 @@ describe('UsersService', () => {
 
       expect(mockUserRepository.findOneById).toHaveBeenCalledWith(
         'nonexistent-id',
+        undefined,
+        { populate: 'business' },
       );
       expect(result).toBeNull();
     });
@@ -231,7 +241,11 @@ describe('UsersService', () => {
 
       for (const id of ids) {
         await service.findById(id);
-        expect(mockUserRepository.findOneById).toHaveBeenCalledWith(id);
+        expect(mockUserRepository.findOneById).toHaveBeenCalledWith(
+          id,
+          undefined,
+          { populate: 'business' },
+        );
       }
     });
   });
@@ -243,12 +257,12 @@ describe('UsersService', () => {
     };
 
     it('should return paginated list of users with condition', async () => {
-      mockUserRepository.findAll.mockResolvedValue(mockPaginatedResponse);
+      mockUserRepository.findMany.mockResolvedValue(mockPaginatedResponse);
 
       const condition = { role: 'business' };
       const result = await service.findAll(condition);
 
-      expect(mockUserRepository.findAll).toHaveBeenCalledWith(
+      expect(mockUserRepository.findMany).toHaveBeenCalledWith(
         condition,
         undefined,
       );
@@ -258,14 +272,14 @@ describe('UsersService', () => {
 
     it('should handle pagination options', async () => {
       const mockResponse = { count: 10, items: [mockUser] };
-      mockUserRepository.findAll.mockResolvedValue(mockResponse);
+      mockUserRepository.findMany.mockResolvedValue(mockResponse);
 
       const condition = { role: 'admin' };
       const options = { limit: 10, skip: 0 };
 
       const result = await service.findAll(condition, options);
 
-      expect(mockUserRepository.findAll).toHaveBeenCalledWith(
+      expect(mockUserRepository.findMany).toHaveBeenCalledWith(
         condition,
         options,
       );
@@ -274,20 +288,20 @@ describe('UsersService', () => {
 
     it('should return all users when no condition provided', async () => {
       const mockResponse = { count: 5, items: [] };
-      mockUserRepository.findAll.mockResolvedValue(mockResponse);
+      mockUserRepository.findMany.mockResolvedValue(mockResponse);
 
       const result = await service.findAll();
 
-      expect(mockUserRepository.findAll).toHaveBeenCalledWith({}, undefined);
+      expect(mockUserRepository.findMany).toHaveBeenCalledWith({}, undefined);
       expect(result).toEqual(mockResponse);
     });
 
     it('should handle empty condition object', async () => {
-      mockUserRepository.findAll.mockResolvedValue(mockPaginatedResponse);
+      mockUserRepository.findMany.mockResolvedValue(mockPaginatedResponse);
 
       const result = await service.findAll({});
 
-      expect(mockUserRepository.findAll).toHaveBeenCalledWith({}, undefined);
+      expect(mockUserRepository.findMany).toHaveBeenCalledWith({}, undefined);
       expect(result).toEqual(mockPaginatedResponse);
     });
 
@@ -298,18 +312,20 @@ describe('UsersService', () => {
         createdAt: { $gte: new Date('2023-01-01') },
       };
 
-      mockUserRepository.findAll.mockResolvedValue(mockPaginatedResponse);
+      mockUserRepository.findMany.mockResolvedValue(mockPaginatedResponse);
 
       await service.findAll(complexCondition);
 
-      expect(mockUserRepository.findAll).toHaveBeenCalledWith(
+      expect(mockUserRepository.findMany).toHaveBeenCalledWith(
         complexCondition,
         undefined,
       );
     });
 
     it('should handle repository errors', async () => {
-      mockUserRepository.findAll.mockRejectedValue(new Error('Database error'));
+      mockUserRepository.findMany.mockRejectedValue(
+        new Error('Database error'),
+      );
 
       await expect(service.findAll({})).rejects.toThrow('Database error');
     });
