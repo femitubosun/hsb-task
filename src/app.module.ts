@@ -5,16 +5,21 @@ import { IdentityModule } from '@modules/identity/identity.module';
 import { ProfileModule } from '@modules/profile/profile.module';
 import { Module } from '@nestjs/common';
 import { AppService } from './app.service';
+import { AvailabilityModule } from './modules/availability/availability.module';
 import { ServicesModule } from './modules/services/services.module';
+import { BookingModule } from './modules/booking/booking.module';
 
 @Module({
   imports: [
+    AvailabilityModule,
     CoreModule,
     InfraModule,
     LibModule,
     IdentityModule,
     ProfileModule,
     ServicesModule,
+    AvailabilityModule,
+    BookingModule,
   ],
   controllers: [],
   providers: [AppService],
