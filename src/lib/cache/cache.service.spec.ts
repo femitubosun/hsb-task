@@ -1,9 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { Logger } from '@nestjs/common';
-import { CacheService } from './cache.service';
+import * as stringUtils from '@/common/utils/string.utils';
 import { ConfigService } from '@/core/config/config.service';
 import { RedisService } from '@/infra/redis/redis.service';
-import * as stringUtils from '@/common/utils/string.utils';
+import { Logger } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import { CacheService } from './cache.service';
 import type { FetchInput } from './dto';
 
 jest.mock('@/common/utils/string.utils');
