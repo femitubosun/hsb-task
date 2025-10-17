@@ -15,7 +15,13 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1', {
     exclude: ['/api/docs', '/api/docs/json', '/api/docs/ref'],
   });
-  app.useGlobalPipes(new ValidationPipe());
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: false,
+      transform: true,
+    }),
+  );
   setupApiDocumentation({
     appName,
     app,

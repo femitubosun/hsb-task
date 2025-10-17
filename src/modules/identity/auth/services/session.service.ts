@@ -1,9 +1,9 @@
 import { CacheService } from '@/lib/cache/cache.service';
 import { Injectable } from '@nestjs/common';
 
+import { AuthSessionType, SessionUser } from '@/common/types/auth-session.type';
 import { ConfigService } from '@core/config/config.service';
 import { NodeEnvironment } from '@core/config/env/env.schema';
-import { AuthSessionType, SessionUser } from '@/common/types/auth-session.type';
 
 @Injectable()
 export class SessionService {

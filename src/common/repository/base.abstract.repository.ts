@@ -1,8 +1,8 @@
 import { FilterQuery, Model, QueryOptions } from 'mongoose';
 
-import { BaseRepositoryInterface } from './base.interface.repository';
 import { BaseEntity } from '../entity';
 import { ListResponse } from '../types/list-response.type';
+import { BaseRepositoryInterface } from './base.interface.repository';
 
 export abstract class BaseRepositoryAbstract<T extends BaseEntity>
   implements BaseRepositoryInterface<T>
@@ -21,30 +21,38 @@ export abstract class BaseRepositoryAbstract<T extends BaseEntity>
     projection?: string,
     options?: QueryOptions<T>,
   ): Promise<T | null> {
-    const item = await this.model.findById(id, projection, options);
+    const item = await this.model
+      .findById(id, projection ? `${projection} deletedAt` : undefined, options)
+      .exec();
     return item?.deletedAt ? null : item;
   }
 
-  async findOneByCondition(condition = {}): Promise<T | null> {
+  async findOneByCondition(
+    condition = {},
+    projection?: string,
+    options?: QueryOptions<T>,
+  ): Promise<T | null> {
     return this.model
-      .findOne({
-        ...condition,
-        deletedAt: null,
-      })
+      .findOne(
+        {
+          ...condition,
+          deletedAt: null,
+        },
+        projection,
+        options,
+      )
       .exec();
   }
 
-  async findAll(
+  async findMany(
     condition: FilterQuery<T>,
     options?: QueryOptions<T>,
   ): Promise<ListResponse<T>> {
     const [count, items] = await Promise.all([
-      this.model.countDocuments({ ...condition, deletedAt: null }),
-      this.model.find(
-        { ...condition, deletedAt: null },
-        options?.projection,
-        options,
-      ),
+      this.model.countDocuments({ ...condition, deletedAt: null }).exec(),
+      this.model
+        .find({ ...condition, deletedAt: null }, options?.projection, options)
+        .exec(),
     ]);
     return {
       count,
@@ -53,11 +61,9 @@ export abstract class BaseRepositoryAbstract<T extends BaseEntity>
   }
 
   async update(id: string, dto: Partial<T>): Promise<T | null> {
-    return await this.model.findOneAndUpdate(
-      { _id: id, deletedAt: null },
-      dto,
-      { new: true },
-    );
+    return await this.model
+      .findOneAndUpdate({ _id: id, deletedAt: null }, dto, { new: true })
+      .exec();
   }
 
   async softDelete(id: string): Promise<boolean> {
@@ -74,10 +80,10 @@ export abstract class BaseRepositoryAbstract<T extends BaseEntity>
   }
 
   async hardDelete(id: string): Promise<boolean> {
-    const found = await this.model.findById(id);
+    const found = await this.model.findById(id).exec();
     if (!found) {
       return false;
     }
-    return !!(await this.model.findByIdAndDelete(id));
+    return !!(await this.model.findByIdAndDelete(id).exec());
   }
 }

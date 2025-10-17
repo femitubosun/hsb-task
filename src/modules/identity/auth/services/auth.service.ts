@@ -1,5 +1,6 @@
 import { ConfigService } from '@/core/config/config.service';
 
+import { SessionService } from '@/modules/identity/auth/services/session.service';
 import {
   BadRequestException,
   ConflictException,
@@ -13,19 +14,18 @@ import {
   SignupRequestDto,
 } from '../dtos/request';
 import { AuthResponseDto } from '../dtos/response';
-import { SessionService } from '@/modules/identity/auth/services/session.service';
 
+import { AuthSessionType, SessionUser } from '@/common/types/auth-session.type';
 import { verifyHash } from '@/common/utils/hash.utils';
 import {
   INVALID_CREDENTIALS,
   SOMETHING_WENT_WRONG,
   USER_EXISTS,
 } from '@/modules/identity/auth/message';
-import { AuthSessionType, SessionUser } from '@/common/types/auth-session.type';
 import { UserDocument } from '@/modules/identity/users/entities/user.entity';
 import { BusinessService } from '@/modules/profile/business/services/business.service';
-import { Types } from 'mongoose';
 import { UsersService } from '@modules/identity/users/services/user.service';
+import { Types } from 'mongoose';
 
 @Injectable()
 export class AuthService {
