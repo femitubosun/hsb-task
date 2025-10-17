@@ -31,6 +31,7 @@
     "@nestjs/schedule": "^6.0.1",
     "@nestjs/swagger": "^11.2.1",
     "@nestjs/terminus": "^11.0.0",
+    "@scalar/nestjs-api-reference": "^1.0.5",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.61.0",
     "class-transformer": "^0.5.1",
@@ -81,6 +82,12 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/$1",
+      "^@core/(.*)$": "<rootDir>/core/$1",
+      "^@infra/(.*)$": "<rootDir>/infra/$1",
+      "^@modules/(.*)$": "<rootDir>/modules/$1"
+    }
   }
 }

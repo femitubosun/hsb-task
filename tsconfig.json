@@ -29,7 +29,10 @@
         "src/core/*"
       ],
       "@infra/*": [
-        "src/infra"
+        "src/infra/*"
+      ],
+      "@modules/*": [
+        "src/modules/*"
       ]
     }
   }
