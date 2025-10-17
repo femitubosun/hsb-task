@@ -9,7 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Types } from 'mongoose';
 import { AuthService } from './auth.service';
 import { SessionService } from './session.service';
-import { UsersService } from '@/modules/identity/users/user.service';
+import { UsersService } from '@modules/identity/users/services/user.service';
 import { BusinessService } from '@/modules/profile/business/services/business.service';
 import * as hashUtils from '@/common/utils/hash.utils';
 import {

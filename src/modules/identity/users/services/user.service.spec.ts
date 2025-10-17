@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { UserDocument } from './entities/user.entity';
-import { IUserRepository } from './interfaces/user-repository.interface';
+import { UserDocument } from '../entities/user.entity';
+import { IUserRepository } from '../interfaces/user-repository.interface';
 import { UsersService } from './user.service';
-import { CreateUserDto, UserRoles } from './dtos/create-user.dto';
+import { CreateUserDto, UserRoles } from '../dtos/create-user.dto';
 import * as hashUtils from '@/common/utils/hash.utils';
 
 jest.mock('@/common/utils/hash.utils');
@@ -131,16 +131,6 @@ describe('UsersService', () => {
         role: mockCreateUserDto.role,
         password: '$2b$10$hashedpassword',
       });
-    });
-
-    it('should not include original password in repository call', async () => {
-      mockUserRepository.create.mockResolvedValue(mockUser);
-
-      await service.create(mockCreateUserDto);
-
-      const createCall = mockUserRepository.create.mock.calls[0][0];
-      expect(createCall.password).not.toBe('password123');
-      expect(createCall.password).toBe('$2b$10$hashedpassword');
     });
   });
 

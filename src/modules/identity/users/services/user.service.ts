@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { IUserRepository } from './interfaces/user-repository.interface';
-import { CreateUserDto, UserRoles } from './dtos/create-user.dto';
+import type { IUserRepository } from '../interfaces/user-repository.interface';
+import { CreateUserDto, UserRoles } from '../dtos/create-user.dto';
 import { hashInput } from '@/common/utils/hash.utils';
 import { UserDocument } from '@/modules/identity/users/entities/user.entity';
 

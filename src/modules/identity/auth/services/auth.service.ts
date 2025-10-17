@@ -14,7 +14,7 @@ import {
 } from '../dtos/request';
 import { AuthResponseDto } from '../dtos/response';
 import { SessionService } from '@/modules/identity/auth/services/session.service';
-import { UsersService } from '@/modules/identity/users/user.service';
+
 import { verifyHash } from '@/common/utils/hash.utils';
 import { UserRoles } from '@/modules/identity/users/dtos/create-user.dto';
 import {
@@ -26,6 +26,7 @@ import { AuthSessionType, SessionUser } from '@/common/types/auth-session.type';
 import { UserDocument } from '@/modules/identity/users/entities/user.entity';
 import { BusinessService } from '@/modules/profile/business/services/business.service';
 import { Types } from 'mongoose';
+import { UsersService } from '@modules/identity/users/services/user.service';
 
 @Injectable()
 export class AuthService {

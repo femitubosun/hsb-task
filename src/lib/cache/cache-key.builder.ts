@@ -109,8 +109,9 @@ export class CacheKey {
       return baseKey;
     }
 
-    const paramString = Object.entries(this.parameters)
-      .map(([k, v]) => `${k}=${encodeURIComponent(this.#serializeValue(v))}`)
+    const paramString = Object.keys(this.parameters)
+      .sort()
+      .map(k => `${k}=${encodeURIComponent(this.#serializeValue(this.parameters[k]))}`)
       .join('&');
 
     return `${baseKey}:${paramString}`;
