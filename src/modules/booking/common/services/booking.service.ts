@@ -67,7 +67,7 @@ export class BookingService {
         status: BookingStatus.CONFIRMED,
         idempotencyKey: input.idempotencyKey,
       }),
-      this.cacheService.invalidateByTag(ck.ownerTag),
+      this.cacheService.invalidateByTag(ck.moduleTag),
     ]);
 
     return this.bookingRepository.findOneById(
@@ -161,7 +161,7 @@ export class BookingService {
         status: BookingStatus.CANCELLED,
         cancelledAt: DateBuilder.today().toDate(),
       }),
-      this.cacheService.invalidateByTag(ck.ownerTag),
+      this.cacheService.invalidateByTag(ck.moduleTag),
     ]);
 
     return this.bookingRepository.findOneById(bookingId, undefined, {
@@ -214,7 +214,7 @@ export class BookingService {
         cancelledAt: DateBuilder.today().toDate(),
         cancellationReason: 'rescheduled',
       }),
-      this.cacheService.invalidateByTag(ck.ownerTag),
+      this.cacheService.invalidateByTag(ck.moduleTag),
     ]);
 
     return this.bookingRepository.findOneById(
