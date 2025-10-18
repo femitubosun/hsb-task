@@ -29,6 +29,14 @@ export class BookingService {
       throw new NotFoundException(RESOURCE_NOT_FOUND('Service'));
     }
 
+    const existing = await this.bookingRepository.findOneByCondition({
+      idempotencyKey: input.idempotencyKey,
+    });
+
+    if (existing) {
+      return existing;
+    }
+
     const totalMinutes =
       service.duration + service.bufferBefore + service.bufferAfter;
     const startsAt = DateBuilder.from(input.startsAt).toDate();
@@ -39,7 +47,7 @@ export class BookingService {
     const [booking] = await Promise.all([
       this.bookingRepository.create({
         clientId: new Types.ObjectId(input.clientId),
-        businessId: new Types.ObjectId(input.businessId),
+        businessId: service.businessId,
         serviceId: new Types.ObjectId(input.serviceId),
         startsAt,
         endsAt,

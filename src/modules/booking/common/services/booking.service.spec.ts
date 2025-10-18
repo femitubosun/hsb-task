@@ -63,7 +63,6 @@ describe('BookingService', () => {
 
   const mockCreateInput: CreateBookingInput = {
     clientId,
-    businessId,
     serviceId,
     startsAt: new Date('2025-01-20T10:00:00Z'),
     idempotencyKey,
