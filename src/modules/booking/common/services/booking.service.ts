@@ -85,8 +85,8 @@ export class BookingService {
       ck.owner(filters.businessId);
     }
 
-    const resolver = async () =>
-      this.bookingRepository.findMany({
+    const resolver = async () => {
+      const result = await this.bookingRepository.findMany({
         ...(filters?.clientId && {
           clientId: new Types.ObjectId(filters.clientId),
         }),
@@ -94,6 +94,8 @@ export class BookingService {
           businessId: new Types.ObjectId(filters.businessId),
         }),
       });
+      return result;
+    };
 
     return this.cacheService.fetch({
       resolver,
