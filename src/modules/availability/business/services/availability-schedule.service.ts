@@ -2,7 +2,12 @@ import { AppModules } from '@/common/constants';
 import { RESOURCE_NOT_FOUND } from '@/common/messages';
 import { ckMaker } from '@/lib/cache/cache-key.builder';
 import { CacheService } from '@/lib/cache/cache.service';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Types } from 'mongoose';
 import { CreateAvailabilityScheduleInput } from '../../common/dtos/create-availability-schedule';
 import { AvailabilitySchedule } from '../../common/entities';
@@ -25,10 +30,12 @@ export class AvailabilityScheduleService {
   /**
    * Creates a new availability schedule for a business.
    * Use this to define regular operating hours for specific days of the week.
+   * Validates that no overlapping active schedules exist for the same days and date range.
    * Invalidates the business owner cache tag after creation.
    *
    * @param input - Schedule data including businessId, daysOfWeek, time ranges, and effective dates
    * @returns The newly created availability schedule document
+   * @throws BadRequestException if overlapping active schedule exists
    */
   async create(input: CreateAvailabilityScheduleInput) {
     const ck = this.#getMethodCk('create');
@@ -36,11 +43,29 @@ export class AvailabilityScheduleService {
 
     const { effectiveFrom, effectiveUntil, ...rest } = input;
 
+    const effectiveFromDate = new Date(effectiveFrom);
+    const effectiveUntilDate = effectiveUntil
+      ? new Date(effectiveUntil)
+      : undefined;
+
+    if (effectiveUntilDate && effectiveUntilDate <= effectiveFromDate) {
+      throw new BadRequestException(
+        'effectiveUntil must be after effectiveFrom',
+      );
+    }
+
+    await this.#validateNoOverlap(
+      input.businessId,
+      input.daysOfWeek,
+      effectiveFromDate,
+      effectiveUntilDate,
+    );
+
     const [availabilitySchedule] = await Promise.all([
       this.availabilityScheduleRepository.create({
         ...rest,
-        effectiveFrom: new Date(effectiveFrom),
-        ...(effectiveUntil && { effectiveUntil: new Date(effectiveUntil) }),
+        effectiveFrom: effectiveFromDate,
+        ...(effectiveUntilDate && { effectiveUntil: effectiveUntilDate }),
         businessId: new Types.ObjectId(input.businessId),
       }),
       this.cacheService.invalidateByTag(ck.ownerTag),
@@ -111,6 +136,7 @@ export class AvailabilityScheduleService {
   /**
    * Updates an existing availability schedule.
    * Validates business ownership before updating.
+   * Validates that the update won't create overlaps with other active schedules.
    * Transforms effectiveFrom and effectiveUntil date strings to Date objects if provided.
    * Invalidates cache after successful update.
    *
@@ -119,6 +145,7 @@ export class AvailabilityScheduleService {
    * @param updateDto - Partial schedule data to update
    * @returns The updated availability schedule document
    * @throws NotFoundException if schedule not found or doesn't belong to the business
+   * @throws BadRequestException if update would create overlapping schedules
    */
   async update(
     businessId: string,
@@ -127,24 +154,56 @@ export class AvailabilityScheduleService {
   ) {
     const ck = this.#getMethodCk('update').owner(businessId).single(scheduleId);
 
-    const found = await this.availabilityScheduleRepository.findOneById(
-      scheduleId,
-      'id businessId',
-    );
+    const found =
+      await this.availabilityScheduleRepository.findOneById(scheduleId);
 
     if (!found || found.businessId.toString() !== businessId)
       throw new NotFoundException(RESOURCE_NOT_FOUND('Availability Schedule'));
 
-    const { effectiveFrom, effectiveUntil, ...rest } = updateDto;
+    const { effectiveFrom, effectiveUntil, isActive, daysOfWeek, ...rest } =
+      updateDto;
+
+    const updatedDaysOfWeek = daysOfWeek ?? found.daysOfWeek;
+    const updatedEffectiveFrom = effectiveFrom
+      ? new Date(effectiveFrom)
+      : found.effectiveFrom;
+    const updatedEffectiveUntil = effectiveUntil
+      ? new Date(effectiveUntil)
+      : found.effectiveUntil;
+    const updatedIsActive = isActive ?? found.isActive;
+
+    if (
+      updatedEffectiveUntil &&
+      updatedEffectiveUntil <= updatedEffectiveFrom
+    ) {
+      throw new BadRequestException(
+        'effectiveUntil must be after effectiveFrom',
+      );
+    }
+
+    if (
+      updatedIsActive &&
+      (daysOfWeek || effectiveFrom || effectiveUntil !== undefined)
+    ) {
+      await this.#validateNoOverlap(
+        businessId,
+        updatedDaysOfWeek,
+        updatedEffectiveFrom,
+        updatedEffectiveUntil,
+        scheduleId,
+      );
+    }
 
     const updateData = {
       ...rest,
+      ...(daysOfWeek && { daysOfWeek }),
       ...(effectiveFrom && {
         effectiveFrom: new Date(effectiveFrom),
       }),
       ...(effectiveUntil && {
         effectiveUntil: new Date(effectiveUntil),
       }),
+      ...(isActive !== undefined && { isActive }),
     };
 
     const [data] = await Promise.all([
@@ -167,10 +226,8 @@ export class AvailabilityScheduleService {
   async delete(businessId: string, scheduleId: string) {
     const ck = this.#getMethodCk('delete').owner(businessId).single(scheduleId);
 
-    const found = await this.availabilityScheduleRepository.findOneById(
-      scheduleId,
-      'id businessId',
-    );
+    const found =
+      await this.availabilityScheduleRepository.findOneById(scheduleId);
 
     if (!found || found.businessId.toString() !== businessId)
       throw new NotFoundException(RESOURCE_NOT_FOUND('Availability Schedule'));
@@ -186,5 +243,45 @@ export class AvailabilityScheduleService {
       AppModules.AVAILABILITY,
       `${AvailabilitySchedule.name}:${method}`,
     );
+  }
+
+  async #validateNoOverlap(
+    businessId: string,
+    daysOfWeek: string[],
+    effectiveFrom: Date,
+    effectiveUntil?: Date,
+    excludeScheduleId?: string,
+  ) {
+    const effectiveEnd = effectiveUntil || new Date('9999-12-31');
+
+    const overlappingSchedules =
+      await this.availabilityScheduleRepository.findMany({
+        businessId: new Types.ObjectId(businessId),
+        isActive: true,
+        daysOfWeek: { $in: daysOfWeek },
+        ...(excludeScheduleId && {
+          _id: { $ne: new Types.ObjectId(excludeScheduleId) },
+        }),
+        $or: [
+          {
+            effectiveFrom: { $lte: effectiveEnd },
+            effectiveUntil: { $exists: false },
+          },
+          {
+            effectiveFrom: { $lte: effectiveEnd },
+            effectiveUntil: { $gte: effectiveFrom },
+          },
+        ],
+      });
+
+    if (overlappingSchedules.count > 0) {
+      const schedule = overlappingSchedules.items[0];
+      const days = daysOfWeek
+        .filter((day) => schedule.daysOfWeek.includes(day))
+        .join(', ');
+      throw new BadRequestException(
+        `An active schedule already exists for ${days} during this date range`,
+      );
+    }
   }
 }

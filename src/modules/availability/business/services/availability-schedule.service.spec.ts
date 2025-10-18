@@ -35,7 +35,7 @@ describe('AvailabilityScheduleService', () => {
     daysOfWeek: ['monday', 'wednesday', 'friday'],
     startTime: '10:00',
     endTime: '18:00',
-    effectiveFrom: new Date('2025-02-01'),
+    effectiveFrom: '2025-02-01T00:00:00.000Z',
   };
 
   const mockRepository = {
@@ -85,17 +85,53 @@ describe('AvailabilityScheduleService', () => {
 
   describe('create', () => {
     it('should create a new schedule and invalidate cache', async () => {
+      mockRepository.findMany.mockResolvedValue({ items: [], count: 0 });
       mockRepository.create.mockResolvedValue(mockSchedule);
       mockCacheService.invalidateByTag.mockResolvedValue(undefined);
 
       const result = await service.create(mockCreateInput);
 
+      expect(mockRepository.findMany).toHaveBeenCalled();
       expect(mockRepository.create).toHaveBeenCalledWith({
-        ...mockCreateInput,
+        daysOfWeek: mockCreateInput.daysOfWeek,
+        startTime: mockCreateInput.startTime,
+        endTime: mockCreateInput.endTime,
+        effectiveFrom: new Date(mockCreateInput.effectiveFrom),
         businessId: new Types.ObjectId(businessId),
       });
       expect(mockCacheService.invalidateByTag).toHaveBeenCalled();
       expect(result).toEqual(mockSchedule);
+    });
+
+    it('should throw BadRequestException when overlapping schedule exists', async () => {
+      const overlappingSchedule = {
+        ...mockSchedule,
+        _id: new Types.ObjectId('507f1f77bcf86cd799439013'),
+        daysOfWeek: ['monday', 'wednesday'],
+        effectiveFrom: new Date('2025-01-15'),
+        effectiveUntil: new Date('2025-03-01'),
+      };
+
+      mockRepository.findMany.mockResolvedValue({
+        items: [overlappingSchedule],
+        count: 1,
+      });
+
+      await expect(service.create(mockCreateInput)).rejects.toThrow(
+        'An active schedule already exists for',
+      );
+    });
+
+    it('should throw BadRequestException when effectiveUntil is before effectiveFrom', async () => {
+      const invalidInput = {
+        ...mockCreateInput,
+        effectiveFrom: '2025-12-31',
+        effectiveUntil: '2025-01-01',
+      };
+
+      await expect(service.create(invalidInput)).rejects.toThrow(
+        'effectiveUntil must be after effectiveFrom',
+      );
     });
   });
 
@@ -188,15 +224,13 @@ describe('AvailabilityScheduleService', () => {
       };
 
       mockRepository.findOneById.mockResolvedValue(mockSchedule);
+      mockRepository.findMany.mockResolvedValue({ items: [], count: 0 });
       mockRepository.update.mockResolvedValue(updatedSchedule);
       mockCacheService.invalidateByTag.mockResolvedValue(undefined);
 
       const result = await service.update(businessId, scheduleId, updateDto);
 
-      expect(mockRepository.findOneById).toHaveBeenCalledWith(
-        scheduleId,
-        'id businessId',
-      );
+      expect(mockRepository.findOneById).toHaveBeenCalledWith(scheduleId);
       expect(mockRepository.update).toHaveBeenCalledWith(scheduleId, {
         daysOfWeek: ['thursday', 'friday'],
         startTime: '08:00',
@@ -205,6 +239,39 @@ describe('AvailabilityScheduleService', () => {
       });
       expect(mockCacheService.invalidateByTag).toHaveBeenCalled();
       expect(result).toEqual(updatedSchedule);
+    });
+
+    it('should throw BadRequestException when update creates overlap', async () => {
+      const overlappingSchedule = {
+        ...mockSchedule,
+        _id: new Types.ObjectId('507f1f77bcf86cd799439013'),
+        daysOfWeek: ['thursday', 'friday'],
+        effectiveFrom: new Date('2025-02-01'),
+        effectiveUntil: new Date('2025-04-01'),
+      };
+
+      mockRepository.findOneById.mockResolvedValue(mockSchedule);
+      mockRepository.findMany.mockResolvedValue({
+        items: [overlappingSchedule],
+        count: 1,
+      });
+
+      await expect(
+        service.update(businessId, scheduleId, updateDto),
+      ).rejects.toThrow('An active schedule already exists for');
+    });
+
+    it('should throw BadRequestException when update makes effectiveUntil before effectiveFrom', async () => {
+      const invalidUpdateDto = {
+        effectiveFrom: '2025-12-31',
+        effectiveUntil: '2025-01-01',
+      };
+
+      mockRepository.findOneById.mockResolvedValue(mockSchedule);
+
+      await expect(
+        service.update(businessId, scheduleId, invalidUpdateDto),
+      ).rejects.toThrow('effectiveUntil must be after effectiveFrom');
     });
 
     it('should throw NotFoundException when schedule does not exist', async () => {
@@ -241,10 +308,7 @@ describe('AvailabilityScheduleService', () => {
 
       await service.delete(businessId, scheduleId);
 
-      expect(mockRepository.findOneById).toHaveBeenCalledWith(
-        scheduleId,
-        'id businessId',
-      );
+      expect(mockRepository.findOneById).toHaveBeenCalledWith(scheduleId);
       expect(mockRepository.softDelete).toHaveBeenCalledWith(scheduleId);
       expect(mockCacheService.invalidateByTag).toHaveBeenCalled();
     });
