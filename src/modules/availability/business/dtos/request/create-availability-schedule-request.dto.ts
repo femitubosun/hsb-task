@@ -1,10 +1,10 @@
 import {
   ArrayMinSize,
   IsArray,
-  IsDateString,
   IsEnum,
   IsOptional,
   IsString,
+  Matches,
 } from 'class-validator';
 
 enum DayOfWeek {
@@ -29,10 +29,14 @@ export class CreateAvailabilityScheduleRequestDto {
   @IsString()
   endTime: string;
 
-  @IsDateString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'effectiveFrom must be in YYYY-MM-DD format',
+  })
   effectiveFrom: string;
 
-  @IsDateString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'effectiveUntil must be in YYYY-MM-DD format',
+  })
   @IsOptional()
   effectiveUntil?: string;
 }

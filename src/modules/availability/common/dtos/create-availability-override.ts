@@ -1,6 +1,6 @@
 export type CreateAvailabilityOverrideInput = {
   businessId: string;
-  date: Date;
+  date: string;
   type: 'closed' | 'modified_hours';
   startTime?: string;
   endTime?: string;

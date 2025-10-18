@@ -3,6 +3,6 @@ export type CreateAvailabilityScheduleInput = {
   daysOfWeek: string[];
   startTime: string;
   endTime: string;
-  effectiveFrom: Date;
-  effectiveUntil?: Date;
+  effectiveFrom: string;
+  effectiveUntil?: string;
 };

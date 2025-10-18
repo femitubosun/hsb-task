@@ -34,9 +34,13 @@ export class AvailabilityScheduleService {
     const ck = this.#getMethodCk('create');
     ck.owner(input.businessId);
 
+    const { effectiveFrom, effectiveUntil, ...rest } = input;
+
     const [availabilitySchedule] = await Promise.all([
       this.availabilityScheduleRepository.create({
-        ...input,
+        ...rest,
+        effectiveFrom: new Date(effectiveFrom),
+        ...(effectiveUntil && { effectiveUntil: new Date(effectiveUntil) }),
         businessId: new Types.ObjectId(input.businessId),
       }),
       this.cacheService.invalidateByTag(ck.ownerTag),

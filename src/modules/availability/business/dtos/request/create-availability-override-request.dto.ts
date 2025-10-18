@@ -1,17 +1,27 @@
 import { Type } from 'class-transformer';
 import {
-  IsDateString,
   IsEnum,
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
   Min,
   ValidateNested,
 } from 'class-validator';
 
+enum OverrideType {
+  CLOSED = 'closed',
+  MODIFIED_HOURS = 'modified_hours',
+}
+
+enum PriceModifierType {
+  PERCENTAGE = 'percentage',
+  FIXED = 'fixed',
+}
+
 class PriceModifierDto {
-  @IsEnum(['percentage', 'fixed'])
-  type: 'percentage' | 'fixed';
+  @IsEnum(PriceModifierType)
+  type: PriceModifierType;
 
   @IsNumber()
   @Min(0)
@@ -19,11 +29,13 @@ class PriceModifierDto {
 }
 
 export class CreateAvailabilityOverrideRequestDto {
-  @IsDateString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'date must be in YYYY-MM-DD format',
+  })
   date: string;
 
-  @IsEnum(['closed', 'modified_hours'])
-  type: 'closed' | 'modified_hours';
+  @IsEnum(OverrideType)
+  type: OverrideType;
 
   @IsString()
   @IsOptional()

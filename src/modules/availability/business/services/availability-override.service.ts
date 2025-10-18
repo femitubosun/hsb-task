@@ -33,9 +33,12 @@ export class AvailabilityOverrideService {
     const ck = this.#getMethodCk('create');
     ck.owner(input.businessId);
 
+    const { date, ...rest } = input;
+
     const [availabilityOverride] = await Promise.all([
       this.availabilityOverrideRepository.create({
-        ...input,
+        ...rest,
+        date: new Date(date),
         businessId: new Types.ObjectId(input.businessId),
       }),
       this.cacheService.invalidateByTag(ck.ownerTag),
