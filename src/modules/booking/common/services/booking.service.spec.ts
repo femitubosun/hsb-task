@@ -71,13 +71,19 @@ describe('BookingService', () => {
   const mockBookingRepository = {
     create: jest.fn(),
     findOneById: jest.fn(),
+    findOneByCondition: jest.fn(),
     findMany: jest.fn(),
     update: jest.fn(),
     softDelete: jest.fn(),
   } as jest.Mocked<
     Pick<
       IBookingRepository,
-      'create' | 'findOneById' | 'findMany' | 'update' | 'softDelete'
+      | 'create'
+      | 'findOneById'
+      | 'findOneByCondition'
+      | 'findMany'
+      | 'update'
+      | 'softDelete'
     >
   >;
 
@@ -129,12 +135,16 @@ describe('BookingService', () => {
       mockServicesService.findOneById.mockResolvedValue(
         mockServiceData as ServiceDocument,
       );
+      mockBookingRepository.findOneByCondition.mockResolvedValue(null);
       mockBookingRepository.create.mockResolvedValue(mockBooking);
       mockCacheService.invalidateByTag.mockResolvedValue(undefined);
 
       const result = await service.create(mockCreateInput);
 
       expect(mockServicesService.findOneById).toHaveBeenCalledWith(serviceId);
+      expect(mockBookingRepository.findOneByCondition).toHaveBeenCalledWith({
+        idempotencyKey,
+      });
       expect(mockBookingRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
           clientId: new Types.ObjectId(clientId),
@@ -156,6 +166,7 @@ describe('BookingService', () => {
       mockServicesService.findOneById.mockResolvedValue(
         mockServiceData as ServiceDocument,
       );
+      mockBookingRepository.findOneByCondition.mockResolvedValue(null);
       mockBookingRepository.create.mockResolvedValue(mockBooking);
       mockCacheService.invalidateByTag.mockResolvedValue(undefined);
 
@@ -189,6 +200,7 @@ describe('BookingService', () => {
       mockServicesService.findOneById.mockResolvedValue(
         mockServiceData as ServiceDocument,
       );
+      mockBookingRepository.findOneByCondition.mockResolvedValue(null);
       mockBookingRepository.create.mockRejectedValue(
         new Error('Database error'),
       );
@@ -196,6 +208,23 @@ describe('BookingService', () => {
       await expect(service.create(mockCreateInput)).rejects.toThrow(
         'Database error',
       );
+    });
+
+    it('should return existing booking when idempotency key already exists', async () => {
+      mockServicesService.findOneById.mockResolvedValue(
+        mockServiceData as ServiceDocument,
+      );
+      mockBookingRepository.findOneByCondition.mockResolvedValue(mockBooking);
+
+      const result = await service.create(mockCreateInput);
+
+      expect(mockServicesService.findOneById).toHaveBeenCalledWith(serviceId);
+      expect(mockBookingRepository.findOneByCondition).toHaveBeenCalledWith({
+        idempotencyKey,
+      });
+      expect(mockBookingRepository.create).not.toHaveBeenCalled();
+      expect(mockCacheService.invalidateByTag).not.toHaveBeenCalled();
+      expect(result).toEqual(mockBooking);
     });
   });
 
@@ -451,6 +480,7 @@ describe('BookingService', () => {
       mockServicesService.findOneById.mockResolvedValue(
         mockServiceData as ServiceDocument,
       );
+      mockBookingRepository.findOneByCondition.mockResolvedValue(null);
       mockBookingRepository.create.mockResolvedValueOnce(mockBooking);
       mockCacheService.invalidateByTag.mockResolvedValue(undefined);
       mockCacheService.fetch.mockImplementation(

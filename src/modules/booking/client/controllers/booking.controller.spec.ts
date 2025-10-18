@@ -83,7 +83,6 @@ describe('BookingController (Client)', () => {
   describe('create', () => {
     it('should create a new booking', async () => {
       const createDto: CreateBookingRequestDto = {
-        businessId,
         serviceId,
         startsAt: '2025-01-20T10:00:00Z',
         idempotencyKey,
@@ -94,7 +93,6 @@ describe('BookingController (Client)', () => {
       const result = await controller.create(createDto, mockUser);
 
       expect(mockBookingService.create).toHaveBeenCalledWith({
-        businessId,
         serviceId,
         startsAt: new Date('2025-01-20T10:00:00Z'),
         idempotencyKey,
@@ -105,7 +103,6 @@ describe('BookingController (Client)', () => {
 
     it('should convert startsAt string to Date object', async () => {
       const createDto: CreateBookingRequestDto = {
-        businessId,
         serviceId,
         startsAt: '2025-01-20T10:00:00Z',
         idempotencyKey,
@@ -122,7 +119,6 @@ describe('BookingController (Client)', () => {
 
     it('should use authenticated user as clientId', async () => {
       const createDto: CreateBookingRequestDto = {
-        businessId,
         serviceId,
         startsAt: '2025-01-20T10:00:00Z',
         idempotencyKey,
