@@ -137,14 +137,24 @@ describe('BookingService', () => {
       );
       mockBookingRepository.findOneByCondition.mockResolvedValue(null);
       mockBookingRepository.create.mockResolvedValue(mockBooking);
+      mockBookingRepository.findOneById.mockResolvedValue(mockBooking);
       mockCacheService.invalidateByTag.mockResolvedValue(undefined);
 
       const result = await service.create(mockCreateInput);
 
       expect(mockServicesService.findOneById).toHaveBeenCalledWith(serviceId);
-      expect(mockBookingRepository.findOneByCondition).toHaveBeenCalledWith({
-        idempotencyKey,
-      });
+      expect(mockBookingRepository.findOneByCondition).toHaveBeenCalledWith(
+        {
+          idempotencyKey,
+        },
+        undefined,
+        {
+          populate: [
+            { path: 'business', select: 'name email phone' },
+            { path: 'service', select: 'name duration price' },
+          ],
+        },
+      );
       expect(mockBookingRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
           clientId: new Types.ObjectId(clientId),
@@ -168,6 +178,7 @@ describe('BookingService', () => {
       );
       mockBookingRepository.findOneByCondition.mockResolvedValue(null);
       mockBookingRepository.create.mockResolvedValue(mockBooking);
+      mockBookingRepository.findOneById.mockResolvedValue(mockBooking);
       mockCacheService.invalidateByTag.mockResolvedValue(undefined);
 
       await service.create(mockCreateInput);
@@ -219,9 +230,18 @@ describe('BookingService', () => {
       const result = await service.create(mockCreateInput);
 
       expect(mockServicesService.findOneById).toHaveBeenCalledWith(serviceId);
-      expect(mockBookingRepository.findOneByCondition).toHaveBeenCalledWith({
-        idempotencyKey,
-      });
+      expect(mockBookingRepository.findOneByCondition).toHaveBeenCalledWith(
+        {
+          idempotencyKey,
+        },
+        undefined,
+        {
+          populate: [
+            { path: 'business', select: 'name email phone' },
+            { path: 'service', select: 'name duration price' },
+          ],
+        },
+      );
       expect(mockBookingRepository.create).not.toHaveBeenCalled();
       expect(mockCacheService.invalidateByTag).not.toHaveBeenCalled();
       expect(result).toEqual(mockBooking);
@@ -238,7 +258,16 @@ describe('BookingService', () => {
       const result = await service.findById(bookingId);
 
       expect(mockCacheService.fetch).toHaveBeenCalled();
-      expect(mockBookingRepository.findOneById).toHaveBeenCalledWith(bookingId);
+      expect(mockBookingRepository.findOneById).toHaveBeenCalledWith(
+        bookingId,
+        undefined,
+        {
+          populate: [
+            { path: 'business', select: 'name email phone' },
+            { path: 'service', select: 'name duration price' },
+          ],
+        },
+      );
       expect(result).toEqual(mockBooking);
     });
 
@@ -278,9 +307,17 @@ describe('BookingService', () => {
       const result = await service.findAll({ clientId });
 
       expect(mockCacheService.fetch).toHaveBeenCalled();
-      expect(mockBookingRepository.findMany).toHaveBeenCalledWith({
-        clientId: new Types.ObjectId(clientId),
-      });
+      expect(mockBookingRepository.findMany).toHaveBeenCalledWith(
+        {
+          clientId: new Types.ObjectId(clientId),
+        },
+        {
+          populate: [
+            { path: 'business', select: 'name email phone' },
+            { path: 'service', select: 'name duration price' },
+          ],
+        },
+      );
       expect(result).toEqual(mockBookings);
       expect(result.items).toHaveLength(1);
       expect(result.count).toBe(1);
@@ -297,9 +334,17 @@ describe('BookingService', () => {
       const result = await service.findAll({ businessId });
 
       expect(mockCacheService.fetch).toHaveBeenCalled();
-      expect(mockBookingRepository.findMany).toHaveBeenCalledWith({
-        businessId: new Types.ObjectId(businessId),
-      });
+      expect(mockBookingRepository.findMany).toHaveBeenCalledWith(
+        {
+          businessId: new Types.ObjectId(businessId),
+        },
+        {
+          populate: [
+            { path: 'business', select: 'name email phone' },
+            { path: 'service', select: 'name duration price' },
+          ],
+        },
+      );
       expect(result).toEqual(mockBookings);
       expect(result.items).toHaveLength(1);
       expect(result.count).toBe(1);
@@ -327,7 +372,9 @@ describe('BookingService', () => {
         cancelledAt,
       } as BookingDocument;
 
-      mockBookingRepository.findOneById.mockResolvedValue(mockBooking);
+      mockBookingRepository.findOneById
+        .mockResolvedValueOnce(mockBooking)
+        .mockResolvedValueOnce(cancelledBooking);
       mockBookingRepository.update.mockResolvedValue(cancelledBooking);
       mockCacheService.invalidateByTag.mockResolvedValue(undefined);
 
@@ -386,7 +433,9 @@ describe('BookingService', () => {
         rescheduledFrom: mockBooking._id,
       };
 
-      mockBookingRepository.findOneById.mockResolvedValue(mockBooking);
+      mockBookingRepository.findOneById
+        .mockResolvedValueOnce(mockBooking)
+        .mockResolvedValueOnce(newBooking as BookingDocument);
       mockBookingRepository.create.mockResolvedValue(
         newBooking as BookingDocument,
       );
@@ -486,7 +535,14 @@ describe('BookingService', () => {
       mockCacheService.fetch.mockImplementation(
         async <T>({ resolver }: FetchInput<T>) => resolver(),
       );
-      mockBookingRepository.findOneById.mockResolvedValue(mockBooking);
+
+      const newBooking = { ...mockBooking, _id: new Types.ObjectId() };
+
+      mockBookingRepository.findOneById
+        .mockResolvedValueOnce(mockBooking)
+        .mockResolvedValueOnce(mockBooking)
+        .mockResolvedValueOnce(mockBooking)
+        .mockResolvedValueOnce(newBooking as BookingDocument);
 
       const created = await service.create(mockCreateInput);
       expect(created).toEqual(mockBooking);
@@ -494,7 +550,6 @@ describe('BookingService', () => {
       const found = await service.findById(bookingId);
       expect(found).toEqual(mockBooking);
 
-      const newBooking = { ...mockBooking, _id: new Types.ObjectId() };
       mockBookingRepository.create.mockResolvedValueOnce(
         newBooking as BookingDocument,
       );
@@ -544,9 +599,17 @@ describe('BookingService', () => {
 
       expect(result.items).toHaveLength(3);
       expect(result.count).toBe(3);
-      expect(mockBookingRepository.findMany).toHaveBeenCalledWith({
-        clientId: new Types.ObjectId(clientId),
-      });
+      expect(mockBookingRepository.findMany).toHaveBeenCalledWith(
+        {
+          clientId: new Types.ObjectId(clientId),
+        },
+        {
+          populate: [
+            { path: 'business', select: 'name email phone' },
+            { path: 'service', select: 'name duration price' },
+          ],
+        },
+      );
     });
   });
 });

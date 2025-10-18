@@ -29,9 +29,18 @@ export class BookingService {
       throw new NotFoundException(RESOURCE_NOT_FOUND('Service'));
     }
 
-    const existing = await this.bookingRepository.findOneByCondition({
-      idempotencyKey: input.idempotencyKey,
-    });
+    const existing = await this.bookingRepository.findOneByCondition(
+      {
+        idempotencyKey: input.idempotencyKey,
+      },
+      undefined,
+      {
+        populate: [
+          { path: 'business', select: 'name email phone' },
+          { path: 'service', select: 'name duration price' },
+        ],
+      },
+    );
 
     if (existing) {
       return existing;
@@ -61,14 +70,32 @@ export class BookingService {
       this.cacheService.invalidateByTag(ck.ownerTag),
     ]);
 
-    return booking;
+    return this.bookingRepository.findOneById(
+      booking._id.toString(),
+      undefined,
+      {
+        populate: [
+          { path: 'business', select: 'name email phone' },
+          { path: 'service', select: 'name duration price' },
+        ],
+      },
+    );
   }
 
   async findById(bookingId: string) {
     const ck = this.#getMethodCk('findById').single(bookingId);
 
     const resolver = async () => {
-      const booking = await this.bookingRepository.findOneById(bookingId);
+      const booking = await this.bookingRepository.findOneById(
+        bookingId,
+        undefined,
+        {
+          populate: [
+            { path: 'business', select: 'name email phone' },
+            { path: 'service', select: 'name duration price' },
+          ],
+        },
+      );
 
       if (!booking) {
         throw new NotFoundException(RESOURCE_NOT_FOUND('Booking'));
@@ -94,14 +121,22 @@ export class BookingService {
     }
 
     const resolver = async () => {
-      const result = await this.bookingRepository.findMany({
-        ...(filters?.clientId && {
-          clientId: new Types.ObjectId(filters.clientId),
-        }),
-        ...(filters?.businessId && {
-          businessId: new Types.ObjectId(filters.businessId),
-        }),
-      });
+      const result = await this.bookingRepository.findMany(
+        {
+          ...(filters?.clientId && {
+            clientId: new Types.ObjectId(filters.clientId),
+          }),
+          ...(filters?.businessId && {
+            businessId: new Types.ObjectId(filters.businessId),
+          }),
+        },
+        {
+          populate: [
+            { path: 'business', select: 'name email phone' },
+            { path: 'service', select: 'name duration price' },
+          ],
+        },
+      );
       return result;
     };
 
@@ -121,7 +156,7 @@ export class BookingService {
       throw new NotFoundException(RESOURCE_NOT_FOUND('Booking'));
     }
 
-    const [updated] = await Promise.all([
+    await Promise.all([
       this.bookingRepository.update(bookingId, {
         status: BookingStatus.CANCELLED,
         cancelledAt: DateBuilder.today().toDate(),
@@ -129,7 +164,12 @@ export class BookingService {
       this.cacheService.invalidateByTag(ck.ownerTag),
     ]);
 
-    return updated;
+    return this.bookingRepository.findOneById(bookingId, undefined, {
+      populate: [
+        { path: 'business', select: 'name email phone' },
+        { path: 'service', select: 'name duration price' },
+      ],
+    });
   }
 
   async reschedule(
@@ -177,7 +217,16 @@ export class BookingService {
       this.cacheService.invalidateByTag(ck.ownerTag),
     ]);
 
-    return newBooking;
+    return this.bookingRepository.findOneById(
+      newBooking._id.toString(),
+      undefined,
+      {
+        populate: [
+          { path: 'business', select: 'name email phone' },
+          { path: 'service', select: 'name duration price' },
+        ],
+      },
+    );
   }
 
   #getMethodCk(method: string) {

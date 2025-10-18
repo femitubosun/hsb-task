@@ -98,6 +98,30 @@ export class Booking extends BaseEntity {
 
 export const BookingSchema = SchemaFactory.createForClass(Booking);
 
+BookingSchema.virtual('client', {
+  ref: User.name,
+  localField: 'clientId',
+  foreignField: '_id',
+  justOne: true,
+});
+
+BookingSchema.virtual('business', {
+  ref: Business.name,
+  localField: 'businessId',
+  foreignField: '_id',
+  justOne: true,
+});
+
+BookingSchema.virtual('service', {
+  ref: Service.name,
+  localField: 'serviceId',
+  foreignField: '_id',
+  justOne: true,
+});
+
+BookingSchema.set('toJSON', { virtuals: true });
+BookingSchema.set('toObject', { virtuals: true });
+
 BookingSchema.index(
   {
     businessId: 1,
