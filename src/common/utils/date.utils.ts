@@ -23,8 +23,32 @@ export class DateBuilder {
     return this;
   }
 
+  addMinutes(n: number) {
+    this.date = new Date(this.date.getTime() + n * 60000);
+    return this;
+  }
+
+  removeMinutes(n: number) {
+    this.date = new Date(this.date.getTime() - n * 60000);
+    return this;
+  }
+
+  addHours(n: number) {
+    this.date = new Date(this.date.getTime() + n * 3600000);
+    return this;
+  }
+
+  removeHours(n: number) {
+    this.date = new Date(this.date.getTime() - n * 3600000);
+    return this;
+  }
+
   static fromISO(isoString: string) {
     return new DateBuilder(new Date(isoString));
+  }
+
+  static from(date: Date) {
+    return new DateBuilder(date);
   }
 
   toDateString() {
