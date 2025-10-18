@@ -10,7 +10,7 @@ export class DateBuilder {
   }
 
   static date(year: number, month: number, day: number) {
-    return new DateBuilder(new Date(year, month - 1, day));
+    return new DateBuilder(new Date(Date.UTC(year, month - 1, day)));
   }
 
   addDays(n: number) {

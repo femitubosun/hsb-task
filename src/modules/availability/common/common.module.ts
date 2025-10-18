@@ -34,5 +34,9 @@ const ENTITIES = [
       useClass: AvailabilityScheduleRepository,
     },
   ],
+  exports: [
+    'IAvailabilityOverrideRepository',
+    'IAvailabilityScheduleRepository',
+  ],
 })
 export class CommonModule {}

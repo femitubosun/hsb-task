@@ -5,10 +5,13 @@ import { CacheService } from '@/lib/cache/cache.service';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { CreateServiceInput } from '../../common/dtos/create-service';
-import { Service } from '../../common/entities/service.entity';
 import type { IServiceRepository } from '../../common/interfaces/service-repository.interface';
 import { UpdateServiceRequestDto } from '../dtos/request';
 
+/**
+ * Service for managing business services (offerings).
+ * Handles CRUD operations with caching and business ownership validation.
+ */
 @Injectable()
 export class ServicesService {
   constructor(
@@ -17,6 +20,13 @@ export class ServicesService {
     private readonly cacheService: CacheService,
   ) {}
 
+  /**
+   * Creates a new service for a business.
+   * Invalidates the business owner cache tag after creation.
+   *
+   * @param input - Service creation data including businessId, name, duration, buffers, and price
+   * @returns The newly created service document
+   */
   async create(input: CreateServiceInput) {
     const ck = this.#getMethodCk('create');
     ck.owner(input.businessId);
@@ -32,6 +42,13 @@ export class ServicesService {
     return service;
   }
 
+  /**
+   * Retrieves all services for a business.
+   * Results are cached with business owner and module tags.
+   *
+   * @param businessId - The ID of the business
+   * @returns Array of service documents belonging to the business
+   */
   async list(businessId: string) {
     const ck = this.#getMethodCk('list');
     ck.owner(businessId);
@@ -48,6 +65,16 @@ export class ServicesService {
     });
   }
 
+  /**
+   * Retrieves a specific service by ID.
+   * Validates that the service belongs to the specified business.
+   * Results are cached.
+   *
+   * @param businessId - The ID of the business
+   * @param serviceId - The ID of the service to retrieve
+   * @returns The service document
+   * @throws NotFoundException if service not found or doesn't belong to the business
+   */
   async getById(businessId: string, serviceId: string) {
     const ck = this.#getMethodCk('getById');
     ck.owner(businessId).single(serviceId);
@@ -68,6 +95,17 @@ export class ServicesService {
     });
   }
 
+  /**
+   * Updates an existing service.
+   * Validates business ownership before updating.
+   * Invalidates cache after successful update.
+   *
+   * @param businessId - The ID of the business
+   * @param serviceId - The ID of the service to update
+   * @param updateDto - Partial service data to update
+   * @returns The updated service document
+   * @throws NotFoundException if service not found or doesn't belong to the business
+   */
   async update(
     businessId: string,
     serviceId: string,
@@ -91,6 +129,15 @@ export class ServicesService {
     return data;
   }
 
+  /**
+   * Soft deletes a service.
+   * Validates business ownership before deletion.
+   * Invalidates cache after successful deletion.
+   *
+   * @param businessId - The ID of the business
+   * @param serviceId - The ID of the service to delete
+   * @throws NotFoundException if service not found or doesn't belong to the business
+   */
   async delete(businessId: string, serviceId: string) {
     const ck = this.#getMethodCk('delete').owner(businessId).single(serviceId);
 
@@ -109,6 +156,6 @@ export class ServicesService {
   }
 
   #getMethodCk(method: string) {
-    return ckMaker(AppModules.SERVICES, `${Service.name}:${method}`);
+    return ckMaker(AppModules.SERVICES, `${ServicesService.name}:${method}`);
   }
 }
