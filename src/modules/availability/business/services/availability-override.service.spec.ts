@@ -6,7 +6,10 @@ import { Types } from 'mongoose';
 import { CreateAvailabilityOverrideInput } from '../../common/dtos/create-availability-override';
 import { AvailabilityOverrideDocument } from '../../common/entities';
 import type { IAvailabilityOverrideRepository } from '../../common/interfaces';
-import { UpdateAvailabilityOverrideRequestDto } from '../dtos/request';
+import {
+  OverrideType,
+  UpdateAvailabilityOverrideRequestDto,
+} from '../dtos/request';
 import { AvailabilityOverrideService } from './availability-override.service';
 
 describe('AvailabilityOverrideService', () => {
@@ -30,7 +33,7 @@ describe('AvailabilityOverrideService', () => {
 
   const mockCreateInput: CreateAvailabilityOverrideInput = {
     businessId,
-    date: new Date('2025-12-31'),
+    date: '2025-12-31',
     type: 'closed',
   };
 
@@ -81,17 +84,43 @@ describe('AvailabilityOverrideService', () => {
 
   describe('create', () => {
     it('should create a new override and invalidate cache', async () => {
+      mockRepository.findMany.mockResolvedValue({ items: [], count: 0 });
       mockRepository.create.mockResolvedValue(mockOverride);
       mockCacheService.invalidateByTag.mockResolvedValue(undefined);
 
       const result = await service.create(mockCreateInput);
 
+      expect(mockRepository.findMany).toHaveBeenCalled();
       expect(mockRepository.create).toHaveBeenCalledWith({
-        ...mockCreateInput,
+        type: mockCreateInput.type,
+        startTime: mockCreateInput.startTime,
+        endTime: mockCreateInput.endTime,
+        priceModifier: mockCreateInput.priceModifier,
+        date: new Date(mockCreateInput.date),
         businessId: new Types.ObjectId(businessId),
       });
       expect(mockCacheService.invalidateByTag).toHaveBeenCalled();
       expect(result).toEqual(mockOverride);
+    });
+
+    it('should throw BadRequestException when override already exists for the same date', async () => {
+      const existingOverride = {
+        ...mockOverride,
+        _id: new Types.ObjectId('507f1f77bcf86cd799439013'),
+        date: new Date('2025-12-31'),
+      };
+
+      mockRepository.findMany.mockResolvedValueOnce({
+        items: [existingOverride],
+        count: 1,
+      });
+
+      await expect(service.create(mockCreateInput)).rejects.toThrow(
+        'An override already exists for',
+      );
+
+      expect(mockRepository.findMany).toHaveBeenCalled();
+      expect(mockRepository.create).not.toHaveBeenCalled();
     });
   });
 
@@ -170,7 +199,7 @@ describe('AvailabilityOverrideService', () => {
   describe('update', () => {
     const updateDto: UpdateAvailabilityOverrideRequestDto = {
       date: '2025-12-26',
-      type: 'modified_hours',
+      type: OverrideType.MODIFIED_HOURS,
       startTime: '10:00',
       endTime: '14:00',
     };
@@ -184,15 +213,13 @@ describe('AvailabilityOverrideService', () => {
       };
 
       mockRepository.findOneById.mockResolvedValue(mockOverride);
+      mockRepository.findMany.mockResolvedValue({ items: [], count: 0 });
       mockRepository.update.mockResolvedValue(updatedOverride);
       mockCacheService.invalidateByTag.mockResolvedValue(undefined);
 
       const result = await service.update(businessId, overrideId, updateDto);
 
-      expect(mockRepository.findOneById).toHaveBeenCalledWith(
-        overrideId,
-        'id businessId',
-      );
+      expect(mockRepository.findOneById).toHaveBeenCalledWith(overrideId);
       expect(mockRepository.update).toHaveBeenCalledWith(overrideId, {
         type: 'modified_hours',
         startTime: '10:00',
@@ -201,6 +228,27 @@ describe('AvailabilityOverrideService', () => {
       });
       expect(mockCacheService.invalidateByTag).toHaveBeenCalled();
       expect(result).toEqual(updatedOverride);
+    });
+
+    it('should throw BadRequestException when updating to a date that already has an override', async () => {
+      const conflictingOverride = {
+        ...mockOverride,
+        _id: new Types.ObjectId('507f1f77bcf86cd799439013'),
+        date: new Date('2025-12-26'),
+      };
+
+      mockRepository.findOneById.mockResolvedValueOnce(mockOverride);
+      mockRepository.findMany.mockResolvedValueOnce({
+        items: [conflictingOverride],
+        count: 1,
+      });
+
+      await expect(
+        service.update(businessId, overrideId, updateDto),
+      ).rejects.toThrow('An override already exists for');
+
+      expect(mockRepository.findMany).toHaveBeenCalled();
+      expect(mockRepository.update).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException when override does not exist', async () => {
@@ -237,10 +285,7 @@ describe('AvailabilityOverrideService', () => {
 
       await service.delete(businessId, overrideId);
 
-      expect(mockRepository.findOneById).toHaveBeenCalledWith(
-        overrideId,
-        'id businessId',
-      );
+      expect(mockRepository.findOneById).toHaveBeenCalledWith(overrideId);
       expect(mockRepository.softDelete).toHaveBeenCalledWith(overrideId);
       expect(mockCacheService.invalidateByTag).toHaveBeenCalled();
     });

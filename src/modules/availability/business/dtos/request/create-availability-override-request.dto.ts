@@ -9,12 +9,12 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-enum OverrideType {
+export enum OverrideType {
   CLOSED = 'closed',
   MODIFIED_HOURS = 'modified_hours',
 }
 
-enum PriceModifierType {
+export enum PriceModifierType {
   PERCENTAGE = 'percentage',
   FIXED = 'fixed',
 }
