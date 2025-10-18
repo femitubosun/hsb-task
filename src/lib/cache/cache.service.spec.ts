@@ -602,6 +602,7 @@ describe('CacheService', () => {
 
       testKeys.forEach((key) => {
         mockRedisClient.get.mockResolvedValue(null);
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
         service.get(key);
         expect(mockRedisClient.get).toHaveBeenCalledWith(
           `test-app:${key.toLowerCase()}`,
