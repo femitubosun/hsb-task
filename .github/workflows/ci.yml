@@ -112,9 +112,31 @@ jobs:
 
       - name: Run unit tests
         run: pnpm run test
+        env:
+          NODE_ENV: test
+          PORT: 3000
+          APP_NAME: hsb-task-test
+          SEED_PASSWORD: test-password-123
+          JWT_SECRET_KEY: test-jwt-secret-key-for-ci
+          JWT_EXPIRES_IN: 1d
+          AUTH_SESSION_TTL: 86400
+          REDIS_URL: redis://localhost:6379
+          DATABASE_URL: mongodb://localhost:27017/hsb-test
+          BULL_MQ_REDIS_URL: redis://localhost:6379
 
       - name: Run tests with coverage
         run: pnpm run test:cov
+        env:
+          NODE_ENV: test
+          PORT: 3000
+          APP_NAME: hsb-task-test
+          SEED_PASSWORD: test-password-123
+          JWT_SECRET_KEY: test-jwt-secret-key-for-ci
+          JWT_EXPIRES_IN: 1d
+          AUTH_SESSION_TTL: 86400
+          REDIS_URL: redis://localhost:6379
+          DATABASE_URL: mongodb://localhost:27017/hsb-test
+          BULL_MQ_REDIS_URL: redis://localhost:6379
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
@@ -171,9 +193,16 @@ jobs:
       - name: Run E2E tests
         run: pnpm run test:e2e
         env:
-          MONGODB_URI: mongodb://localhost:27017/hsb-test
-          REDIS_HOST: localhost
-          REDIS_PORT: 6379
+          NODE_ENV: test
+          PORT: 3000
+          APP_NAME: hsb-task-test
+          SEED_PASSWORD: test-password-123
+          JWT_SECRET_KEY: test-jwt-secret-key-for-ci
+          JWT_EXPIRES_IN: 1d
+          AUTH_SESSION_TTL: 86400
+          REDIS_URL: redis://localhost:6379
+          DATABASE_URL: mongodb://localhost:27017/hsb-test
+          BULL_MQ_REDIS_URL: redis://localhost:6379
 
   quality-gate:
     name: Quality Gate
