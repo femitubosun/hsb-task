@@ -84,7 +84,8 @@
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "testPathIgnorePatterns": [
-      "/node_modules/"
+      "/node_modules/",
+      "\\.integration\\.spec\\.ts$"
     ],
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
