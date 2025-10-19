@@ -10,5 +10,6 @@ import { AvailabilityScheduleService } from './services/availability-schedule.se
   imports: [CommonModule, CacheModule],
   controllers: [AvailabilityOverrideController, AvailabilityScheduleController],
   providers: [AvailabilityOverrideService, AvailabilityScheduleService],
+  exports: [AvailabilityOverrideService, AvailabilityScheduleService],
 })
 export class BusinessModule {}

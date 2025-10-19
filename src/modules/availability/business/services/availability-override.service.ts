@@ -4,7 +4,7 @@ import { DateBuilder } from '@/common/utils/date.utils';
 import { ckMaker } from '@/lib/cache/cache-key.builder';
 import { CacheService } from '@/lib/cache/cache.service';
 import {
-  BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   NotFoundException,
@@ -220,9 +220,7 @@ export class AvailabilityOverrideService {
 
     if (existingOverrides.count > 0) {
       const dateStr = DateBuilder.toISODateString(date);
-      throw new BadRequestException(
-        `An override already exists for ${dateStr}`,
-      );
+      throw new ConflictException(`An override already exists for ${dateStr}`);
     }
   }
 }

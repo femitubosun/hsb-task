@@ -4,6 +4,7 @@ import { ckMaker } from '@/lib/cache/cache-key.builder';
 import { CacheService } from '@/lib/cache/cache.service';
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   NotFoundException,
@@ -279,7 +280,7 @@ export class AvailabilityScheduleService {
       const days = daysOfWeek
         .filter((day) => schedule.daysOfWeek.includes(day))
         .join(', ');
-      throw new BadRequestException(
+      throw new ConflictException(
         `An active schedule already exists for ${days} during this date range`,
       );
     }
