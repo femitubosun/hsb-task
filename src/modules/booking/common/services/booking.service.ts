@@ -4,7 +4,12 @@ import { DateBuilder } from '@/common/utils/date.utils';
 import { ckMaker } from '@/lib/cache/cache-key.builder';
 import { CacheService } from '@/lib/cache/cache.service';
 import { ServicesService } from '@/modules/services/common/services/services.service';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Types } from 'mongoose';
 import { CreateBookingInput, RescheduleBookingInput } from '../dtos';
 import { BookingStatus } from '../entities/booking.entity';
@@ -68,7 +73,7 @@ export class BookingService {
     });
 
     if (!lockAcquired) {
-      throw new NotFoundException(
+      throw new BadRequestException(
         'Slot conflicts with existing booking or is being booked by another user',
       );
     }

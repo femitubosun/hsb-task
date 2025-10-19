@@ -8,5 +8,6 @@ import { ServicesService } from './services/services.service';
   imports: [CommonModule, CacheModule],
   controllers: [ServiceController],
   providers: [ServicesService],
+  exports: [ServicesService],
 })
 export class BusinessModule {}

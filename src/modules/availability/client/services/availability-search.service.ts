@@ -42,16 +42,18 @@ export class AvailabilitySearchService {
   async search(
     input: AvailabilitySearchRequestDto,
   ): Promise<AvailabilitySearchResponseDto> {
-    const businessConfig = await this.#getBusinessConfig(input.businessId);
-
     const service = await this.serviceRepository.findOneById(input.serviceId);
 
-    if (!service || service.businessId.toString() !== input.businessId) {
+    if (!service) {
       throw new NotFoundException(RESOURCE_NOT_FOUND('Service'));
     }
 
+    const businessId = service.businessId.toString();
+
+    const businessConfig = await this.#getBusinessConfig(businessId);
+
     const slots = await this.#computeSlotsFromRedis(
-      input.businessId,
+      businessId,
       businessConfig,
       service,
       new Date(input.startDate),
@@ -77,7 +79,7 @@ export class AvailabilitySearchService {
       .owner(businessId)
       .toString();
 
-    return this.cacheService.fetch({
+    const cached = await this.cacheService.fetch({
       key: cacheKey,
       resolver: async () => {
         const now = new Date();
@@ -85,8 +87,8 @@ export class AvailabilitySearchService {
           .addDays(this.CACHE_LOOKAHEAD_DAYS)
           .toDate();
 
-        const [schedules, overrides] = await Promise.all([
-          this.availabilityScheduleRepository.findMany({
+        const [schedule, overrides] = await Promise.all([
+          this.availabilityScheduleRepository.findOneByCondition({
             businessId: new Types.ObjectId(businessId),
             effectiveFrom: { $lte: now },
             $or: [{ effectiveUntil: { $gte: now } }, { effectiveUntil: null }],
@@ -99,13 +101,11 @@ export class AvailabilitySearchService {
           }),
         ]);
 
-        if (!schedules.items.length) {
+        if (!schedule) {
           throw new NotFoundException(
-            `No active schedule found for business ${businessId}`,
+            RESOURCE_NOT_FOUND('Business Availability Schedule'),
           );
         }
-
-        const schedule = schedules.items[0];
 
         const overrideMap = new Map(
           overrides.items.map((o) => [DateBuilder.toISODateString(o.date), o]),
@@ -115,6 +115,12 @@ export class AvailabilitySearchService {
       },
       tags: [`business:${businessId}`],
     });
+
+    if (!(cached.overrideMap instanceof Map)) {
+      cached.overrideMap = new Map(Object.entries(cached.overrideMap));
+    }
+
+    return cached;
   }
 
   async #computeSlotsFromRedis(
