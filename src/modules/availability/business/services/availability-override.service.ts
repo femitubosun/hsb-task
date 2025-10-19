@@ -1,5 +1,6 @@
 import { AppModules } from '@/common/constants';
 import { RESOURCE_NOT_FOUND } from '@/common/messages';
+import { DateBuilder } from '@/common/utils/date.utils';
 import { ckMaker } from '@/lib/cache/cache-key.builder';
 import { CacheService } from '@/lib/cache/cache.service';
 import {
@@ -218,7 +219,7 @@ export class AvailabilityOverrideService {
       });
 
     if (existingOverrides.count > 0) {
-      const dateStr = date.toISOString().split('T')[0];
+      const dateStr = DateBuilder.toISODateString(date);
       throw new BadRequestException(
         `An override already exists for ${dateStr}`,
       );

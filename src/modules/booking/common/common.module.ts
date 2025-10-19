@@ -4,6 +4,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Booking, BookingSchema } from './entities/booking.entity';
 import { BookingRepository } from './repositories/booking.repository';
+import { BookingLockService } from './services/booking-lock.service';
 import { BookingService } from './services/booking.service';
 
 const ENTITIES = [
@@ -21,11 +22,12 @@ const ENTITIES = [
   ],
   providers: [
     BookingService,
+    BookingLockService,
     {
       provide: 'IBookingRepository',
       useClass: BookingRepository,
     },
   ],
-  exports: [BookingService, 'IBookingRepository'],
+  exports: [BookingService, 'IBookingRepository', BookingLockService],
 })
 export class CommonModule {}
