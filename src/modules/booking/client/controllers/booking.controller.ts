@@ -3,7 +3,6 @@ import type { SessionUser } from '@/common/types/auth-session.type';
 import {
   Body,
   Controller,
-  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -58,7 +57,7 @@ export class BookingController {
     });
   }
 
-  @Delete(':id')
+  @Patch(':id/cancel')
   @HttpCode(HttpStatus.NO_CONTENT)
   async cancel(@Param('id') id: string, @AuthUser() user: SessionUser) {
     await this.bookingService.cancel(id, user._id);

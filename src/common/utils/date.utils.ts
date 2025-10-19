@@ -43,26 +43,29 @@ export class DateBuilder {
     return this;
   }
 
-  static fromISO(isoString: string) {
-    return new DateBuilder(new Date(isoString));
+  isAfter(other: DateBuilder | Date) {
+    const otherDate = other instanceof DateBuilder ? other.toDate() : other;
+    return this.date.getTime() > otherDate.getTime();
   }
 
-  static from(date: Date) {
-    return new DateBuilder(date);
+  isBefore(other: DateBuilder | Date) {
+    const otherDate = other instanceof DateBuilder ? other.toDate() : other;
+    return this.date.getTime() < otherDate.getTime();
   }
 
-  static timeToEpoch(date: Date | string, time: string): number {
-    return DateBuilder.from(typeof date === 'string' ? new Date(date) : date)
-      .setTime(time)
-      .toEpoch();
+  isSame(other: DateBuilder | Date) {
+    const otherDate = other instanceof DateBuilder ? other.toDate() : other;
+    return this.date.getTime() === otherDate.getTime();
   }
 
-  static epochToTime(epoch: number): string {
-    return DateBuilder.from(new Date(epoch)).getTime();
+  isAfterOrEqual(other: DateBuilder | Date) {
+    const otherDate = other instanceof DateBuilder ? other.toDate() : other;
+    return this.date.getTime() >= otherDate.getTime();
   }
 
-  static toISODateString(date: Date): string {
-    return date.toISOString().split('T')[0];
+  isBeforeOrEqual(other: DateBuilder | Date) {
+    const otherDate = other instanceof DateBuilder ? other.toDate() : other;
+    return this.date.getTime() <= otherDate.getTime();
   }
 
   setTime(time: string) {
@@ -83,6 +86,28 @@ export class DateBuilder {
 
   toDateString() {
     return DateBuilder.toISODateString(this.date);
+  }
+
+  static fromISO(isoString: string) {
+    return new DateBuilder(new Date(isoString));
+  }
+
+  static from(date: Date) {
+    return new DateBuilder(date);
+  }
+
+  static timeToEpoch(date: Date | string, time: string): number {
+    return DateBuilder.from(typeof date === 'string' ? new Date(date) : date)
+      .setTime(time)
+      .toEpoch();
+  }
+
+  static epochToTime(epoch: number): string {
+    return DateBuilder.from(new Date(epoch)).getTime();
+  }
+
+  static toISODateString(date: Date): string {
+    return date.toISOString().split('T')[0];
   }
 
   toDate() {
