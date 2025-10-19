@@ -103,6 +103,10 @@ describe('BookingService', () => {
     atomicRescheduleSwap: jest.fn(),
   };
 
+  const mockAvailabilityScheduleRepository = {
+    findOneByCondition: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -110,6 +114,10 @@ describe('BookingService', () => {
         {
           provide: 'IBookingRepository',
           useValue: mockBookingRepository,
+        },
+        {
+          provide: 'IAvailabilityScheduleRepository',
+          useValue: mockAvailabilityScheduleRepository,
         },
         {
           provide: CacheService,
@@ -135,6 +143,18 @@ describe('BookingService', () => {
     mockBookingLockService.tryAcquireSlot.mockReset();
     mockBookingLockService.releaseSlot.mockReset();
     mockBookingLockService.atomicRescheduleSwap.mockReset();
+    mockAvailabilityScheduleRepository.findOneByCondition.mockReset();
+
+    mockAvailabilityScheduleRepository.findOneByCondition.mockResolvedValue({
+      _id: new Types.ObjectId(),
+      businessId: new Types.ObjectId(businessId),
+      daysOfWeek: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+      startTime: '09:00',
+      endTime: '18:00',
+      effectiveFrom: new Date('2025-01-01T00:00:00Z'),
+      effectiveUntil: null,
+      isActive: true,
+    });
   });
 
   it('should be defined', () => {

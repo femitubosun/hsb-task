@@ -3,6 +3,7 @@ import { RESOURCE_NOT_FOUND } from '@/common/messages';
 import { DateBuilder } from '@/common/utils/date.utils';
 import { ckMaker } from '@/lib/cache/cache-key.builder';
 import { CacheService } from '@/lib/cache/cache.service';
+import type { IAvailabilityScheduleRepository } from '@/modules/availability/common/interfaces';
 import { ServicesService } from '@/modules/services/common/services/services.service';
 import {
   BadRequestException,
@@ -14,6 +15,7 @@ import { Types } from 'mongoose';
 import { CreateBookingInput, RescheduleBookingInput } from '../dtos';
 import { BookingStatus } from '../entities/booking.entity';
 import type { IBookingRepository } from '../interfaces/booking-repository.interface';
+import { TIME_NOT_AVAILABLE_FOR_BOOKING } from '../messages';
 import { BookingLockService } from './booking-lock.service';
 
 @Injectable()
@@ -21,6 +23,8 @@ export class BookingService {
   constructor(
     @Inject('IBookingRepository')
     private readonly bookingRepository: IBookingRepository,
+    @Inject('IAvailabilityScheduleRepository')
+    private readonly availabilityScheduleRepository: IAvailabilityScheduleRepository,
     private readonly cacheService: CacheService,
     private readonly servicesService: ServicesService,
     private readonly bookingLockService: BookingLockService,
@@ -54,6 +58,12 @@ export class BookingService {
     }
 
     const startsAt = DateBuilder.from(input.startsAt).toDate();
+
+    await this.#validateBookingDateWithinSchedule(
+      service.businessId.toString(),
+      startsAt,
+    );
+
     const startWithBuffer = DateBuilder.from(startsAt)
       .removeMinutes(service.bufferBefore)
       .toDate();
@@ -227,6 +237,12 @@ export class BookingService {
     const oldBookingDate = DateBuilder.toISODateString(booking.startsAt);
 
     const newStartsAt = DateBuilder.from(input.startsAt).toDate();
+
+    await this.#validateBookingDateWithinSchedule(
+      booking.businessId.toString(),
+      newStartsAt,
+    );
+
     const newStartWithBuffer = DateBuilder.from(newStartsAt)
       .removeMinutes(booking.bufferBefore)
       .toDate();
@@ -283,6 +299,60 @@ export class BookingService {
         ],
       },
     );
+  }
+
+  async #validateBookingDateWithinSchedule(
+    businessId: string,
+    bookingDate: Date,
+  ) {
+    const bookingDateStr = DateBuilder.toISODateString(bookingDate);
+
+    const schedule =
+      await this.availabilityScheduleRepository.findOneByCondition({
+        businessId: new Types.ObjectId(businessId),
+        isActive: true,
+      });
+
+    if (!schedule) {
+      throw new BadRequestException(TIME_NOT_AVAILABLE_FOR_BOOKING);
+    }
+
+    const effectiveFromStr = DateBuilder.toISODateString(
+      schedule.effectiveFrom,
+    );
+
+    if (bookingDateStr < effectiveFromStr) {
+      throw new BadRequestException(TIME_NOT_AVAILABLE_FOR_BOOKING);
+    }
+
+    if (schedule.effectiveUntil) {
+      const effectiveUntilStr = DateBuilder.toISODateString(
+        schedule.effectiveUntil,
+      );
+      if (bookingDateStr > effectiveUntilStr) {
+        throw new BadRequestException(TIME_NOT_AVAILABLE_FOR_BOOKING);
+      }
+    }
+
+    const dayOfWeek = this.#getDayOfWeekName(bookingDate.getDay());
+    if (!schedule.daysOfWeek.includes(dayOfWeek)) {
+      throw new BadRequestException(
+        `Business is not available on ${dayOfWeek}s`,
+      );
+    }
+  }
+
+  #getDayOfWeekName(day: number): string {
+    const days = [
+      'sunday',
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+    ];
+    return days[day];
   }
 
   #getMethodCk(method: string) {
