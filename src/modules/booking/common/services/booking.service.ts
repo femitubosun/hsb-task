@@ -201,10 +201,25 @@ export class BookingService {
 
     const bookingDate = DateBuilder.toISODateString(booking.startsAt);
 
+    const now = DateBuilder.today();
+    const twelveHoursBeforeBooking = DateBuilder.from(
+      booking.startsAt,
+    ).removeHours(12);
+
+    const isLateCancellation = now.isAfterOrEqual(twelveHoursBeforeBooking);
+
+    const penaltyMultiplier = isLateCancellation ? 0.3 : 0;
+    const price = booking.priceAtBooking;
+    const cancellationFee = price * penaltyMultiplier;
+    const refundAmount = price - cancellationFee;
+
     await Promise.all([
       this.bookingRepository.update(bookingId, {
         status: BookingStatus.CANCELLED,
-        cancelledAt: DateBuilder.today().toDate(),
+        cancelledAt: now.toDate(),
+        refundedAt: now.toDate(),
+        refundAmount,
+        cancellationFee,
       }),
       this.bookingLockService.releaseSlot({
         businessId: booking.businessId.toString(),
