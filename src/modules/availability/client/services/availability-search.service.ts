@@ -131,9 +131,23 @@ export class AvailabilitySearchService {
     endDate: Date,
   ): Promise<AvailabilitySlotDto[]> {
     const slots: AvailabilitySlotDto[] = [];
-    const current = new Date(startDate);
+    const effectiveStart = new Date(
+      Math.max(
+        startDate.getTime(),
+        new Date(config.schedule.effectiveFrom).getTime(),
+      ),
+    );
+    const effectiveEnd = config.schedule.effectiveUntil
+      ? new Date(
+          Math.min(
+            endDate.getTime(),
+            new Date(config.schedule.effectiveUntil).getTime(),
+          ),
+        )
+      : endDate;
+    const current = new Date(effectiveStart);
 
-    while (current <= endDate) {
+    while (current <= effectiveEnd) {
       const dayOfWeek = this.#getDayOfWeekName(current.getDay());
 
       if (config.schedule.daysOfWeek.includes(dayOfWeek)) {
