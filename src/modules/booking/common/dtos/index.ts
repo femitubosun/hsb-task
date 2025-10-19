@@ -10,6 +10,12 @@ export interface BookingRange {
   bookingId: string;
 }
 
+export interface BookingIdentifier {
+  businessId: string;
+  date: string;
+  bookingId: string;
+}
+
 export interface SlotQueryParams {
   businessId: string;
   date: string;

@@ -1,6 +1,6 @@
 import { RedisService } from '@/infra/redis/redis.service';
 import { Test, TestingModule } from '@nestjs/testing';
-import { BookingRange, SlotQueryParams } from '../dtos';
+import { BookingIdentifier, BookingRange, SlotQueryParams } from '../dtos';
 import { BookingLockService } from './booking-lock.service';
 
 type EvalShaArgs = {
@@ -18,7 +18,9 @@ describe('LockService', () => {
     evalSha: jest.fn<Promise<number | string | null>, [string, EvalShaArgs]>(),
     zAdd: jest.fn<Promise<string | number>, ZAddArgs>(),
     zRem: jest.fn<Promise<number>, [string, string]>(),
+    zScore: jest.fn<Promise<number | null>, [string, string]>(),
     hSet: jest.fn<Promise<number>, [string, string, string]>(),
+    hGet: jest.fn<Promise<string | null>, [string, string]>(),
     hDel: jest.fn<Promise<number>, [string, string]>(),
   };
 
@@ -103,11 +105,9 @@ describe('LockService', () => {
   });
 
   describe('releaseSlot', () => {
-    const bookingRange: BookingRange = {
+    const bookingIdentifier: BookingIdentifier = {
       businessId: '507f1f77bcf86cd799439012',
       date: '2025-01-20',
-      start: 1737367200000,
-      end: 1737370800000,
       bookingId: 'booking-123',
     };
 
@@ -115,7 +115,7 @@ describe('LockService', () => {
       mockRedisInstance.zRem.mockResolvedValue(1);
       mockRedisInstance.hDel.mockResolvedValue(1);
 
-      await service.releaseSlot(bookingRange);
+      await service.releaseSlot(bookingIdentifier);
 
       expect(mockRedisInstance.zRem).toHaveBeenCalledWith(
         'bookings:507f1f77bcf86cd799439012:2025-01-20',
@@ -134,7 +134,21 @@ describe('LockService', () => {
       mockRedisInstance.zRem.mockReturnValue(zRemPromise);
       mockRedisInstance.hDel.mockReturnValue(hDelPromise);
 
-      await service.releaseSlot(bookingRange);
+      await service.releaseSlot(bookingIdentifier);
+
+      expect(mockRedisInstance.zRem).toHaveBeenCalled();
+      expect(mockRedisInstance.hDel).toHaveBeenCalled();
+    });
+
+    it('should only require businessId, date, and bookingId', async () => {
+      mockRedisInstance.zRem.mockResolvedValue(1);
+      mockRedisInstance.hDel.mockResolvedValue(1);
+
+      await service.releaseSlot({
+        businessId: '507f1f77bcf86cd799439012',
+        date: '2025-01-20',
+        bookingId: 'booking-123',
+      });
 
       expect(mockRedisInstance.zRem).toHaveBeenCalled();
       expect(mockRedisInstance.hDel).toHaveBeenCalled();
@@ -297,13 +311,11 @@ describe('LockService', () => {
   describe('atomicRescheduleSwap', () => {
     const rescheduleParams = {
       businessId: '507f1f77bcf86cd799439012',
+      oldBookingId: 'booking-123',
       oldDate: '2025-01-20',
-      oldStart: 1737367200000,
-      oldEnd: 1737370800000,
       newDate: '2025-01-21',
       newStart: 1737453600000,
       newEnd: 1737457200000,
-      bookingId: 'booking-123',
     };
 
     beforeEach(async () => {
@@ -315,12 +327,26 @@ describe('LockService', () => {
       await service.onModuleInit();
     });
 
-    it('should successfully swap booking to new slot', async () => {
+    it('should fetch old times from Redis and successfully swap booking', async () => {
+      mockRedisInstance.zScore = jest
+        .fn<Promise<number | null>, [string, string]>()
+        .mockResolvedValue(1737367200000);
+      mockRedisInstance.hGet = jest
+        .fn<Promise<string | null>, [string, string]>()
+        .mockResolvedValue('1737370800000');
       mockRedisInstance.evalSha.mockResolvedValue(1);
 
       const result = await service.atomicRescheduleSwap(rescheduleParams);
 
       expect(result).toBe(true);
+      expect(mockRedisInstance.zScore).toHaveBeenCalledWith(
+        'bookings:507f1f77bcf86cd799439012:2025-01-20',
+        'booking-123',
+      );
+      expect(mockRedisInstance.hGet).toHaveBeenCalledWith(
+        'booking_end_times',
+        'booking-123',
+      );
       expect(mockRedisInstance.evalSha).toHaveBeenCalledWith(
         'reschedule-swap-sha',
         {
@@ -340,6 +366,12 @@ describe('LockService', () => {
     });
 
     it('should fail when new slot has conflict', async () => {
+      mockRedisInstance.zScore = jest
+        .fn<Promise<number | null>, [string, string]>()
+        .mockResolvedValue(1737367200000);
+      mockRedisInstance.hGet = jest
+        .fn<Promise<string | null>, [string, string]>()
+        .mockResolvedValue('1737370800000');
       mockRedisInstance.evalSha.mockResolvedValue(0);
 
       const result = await service.atomicRescheduleSwap(rescheduleParams);
@@ -353,6 +385,12 @@ describe('LockService', () => {
         newDate: '2025-01-20',
       };
 
+      mockRedisInstance.zScore = jest
+        .fn<Promise<number | null>, [string, string]>()
+        .mockResolvedValue(1737367200000);
+      mockRedisInstance.hGet = jest
+        .fn<Promise<string | null>, [string, string]>()
+        .mockResolvedValue('1737370800000');
       mockRedisInstance.evalSha.mockResolvedValue(1);
 
       await service.atomicRescheduleSwap(sameDayParams);
@@ -362,6 +400,12 @@ describe('LockService', () => {
     });
 
     it('should use businessId in both old and new keys', async () => {
+      mockRedisInstance.zScore = jest
+        .fn<Promise<number | null>, [string, string]>()
+        .mockResolvedValue(1737367200000);
+      mockRedisInstance.hGet = jest
+        .fn<Promise<string | null>, [string, string]>()
+        .mockResolvedValue('1737370800000');
       mockRedisInstance.evalSha.mockResolvedValue(1);
 
       await service.atomicRescheduleSwap(rescheduleParams);
@@ -369,6 +413,34 @@ describe('LockService', () => {
       const callArgs = mockRedisInstance.evalSha.mock.calls[0]?.[1];
       expect(callArgs?.keys[0]).toContain('507f1f77bcf86cd799439012');
       expect(callArgs?.keys[1]).toContain('507f1f77bcf86cd799439012');
+    });
+
+    it('should return false when old booking does not exist in Redis', async () => {
+      mockRedisInstance.zScore = jest
+        .fn<Promise<number | null>, [string, string]>()
+        .mockResolvedValue(null);
+      mockRedisInstance.hGet = jest
+        .fn<Promise<string | null>, [string, string]>()
+        .mockResolvedValue('1737370800000');
+
+      const result = await service.atomicRescheduleSwap(rescheduleParams);
+
+      expect(result).toBe(false);
+      expect(mockRedisInstance.evalSha).not.toHaveBeenCalled();
+    });
+
+    it('should return false when old booking end time does not exist', async () => {
+      mockRedisInstance.zScore = jest
+        .fn<Promise<number | null>, [string, string]>()
+        .mockResolvedValue(1737367200000);
+      mockRedisInstance.hGet = jest
+        .fn<Promise<string | null>, [string, string]>()
+        .mockResolvedValue(null);
+
+      const result = await service.atomicRescheduleSwap(rescheduleParams);
+
+      expect(result).toBe(false);
+      expect(mockRedisInstance.evalSha).not.toHaveBeenCalled();
     });
   });
 
@@ -400,7 +472,11 @@ describe('LockService', () => {
       expect(mockRedisInstance.zAdd).toHaveBeenCalled();
       expect(mockRedisInstance.hSet).toHaveBeenCalled();
 
-      await service.releaseSlot(bookingRange);
+      await service.releaseSlot({
+        businessId: bookingRange.businessId,
+        date: bookingRange.date,
+        bookingId: bookingRange.bookingId,
+      });
       expect(mockRedisInstance.zRem).toHaveBeenCalled();
       expect(mockRedisInstance.hDel).toHaveBeenCalled();
     });

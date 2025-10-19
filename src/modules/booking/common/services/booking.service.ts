@@ -9,6 +9,7 @@ import { Types } from 'mongoose';
 import { CreateBookingInput, RescheduleBookingInput } from '../dtos';
 import { BookingStatus } from '../entities/booking.entity';
 import type { IBookingRepository } from '../interfaces/booking-repository.interface';
+import { BookingLockService } from './booking-lock.service';
 
 @Injectable()
 export class BookingService {
@@ -17,6 +18,7 @@ export class BookingService {
     private readonly bookingRepository: IBookingRepository,
     private readonly cacheService: CacheService,
     private readonly servicesService: ServicesService,
+    private readonly bookingLockService: BookingLockService,
   ) {}
 
   async create(input: CreateBookingInput) {
@@ -46,40 +48,68 @@ export class BookingService {
       return existing;
     }
 
-    const totalMinutes =
-      service.duration + service.bufferBefore + service.bufferAfter;
     const startsAt = DateBuilder.from(input.startsAt).toDate();
-    const endsAt = DateBuilder.from(input.startsAt)
-      .addMinutes(totalMinutes)
+    const startWithBuffer = DateBuilder.from(startsAt)
+      .removeMinutes(service.bufferBefore)
+      .toDate();
+    const endWithBuffer = DateBuilder.from(startsAt)
+      .addMinutes(service.duration + service.bufferAfter)
       .toDate();
 
-    const [booking] = await Promise.all([
-      this.bookingRepository.create({
-        clientId: new Types.ObjectId(input.clientId),
-        businessId: service.businessId,
-        serviceId: new Types.ObjectId(input.serviceId),
-        startsAt,
-        endsAt,
-        duration: service.duration,
-        bufferBefore: service.bufferBefore,
-        bufferAfter: service.bufferAfter,
-        priceAtBooking: service.price,
-        status: BookingStatus.CONFIRMED,
-        idempotencyKey: input.idempotencyKey,
-      }),
-      this.cacheService.invalidateByTag(ck.moduleTag),
-    ]);
+    const bookingDate = DateBuilder.toISODateString(startsAt);
+    const bookingId = new Types.ObjectId();
 
-    return this.bookingRepository.findOneById(
-      booking._id.toString(),
-      undefined,
-      {
-        populate: [
-          { path: 'business', select: 'name email phone' },
-          { path: 'service', select: 'name duration price' },
-        ],
-      },
-    );
+    const lockAcquired = await this.bookingLockService.tryAcquireSlot({
+      businessId: service.businessId.toString(),
+      date: bookingDate,
+      start: startWithBuffer.getTime(),
+      end: endWithBuffer.getTime(),
+      bookingId: bookingId.toString(),
+    });
+
+    if (!lockAcquired) {
+      throw new NotFoundException(
+        'Slot conflicts with existing booking or is being booked by another user',
+      );
+    }
+
+    try {
+      const [booking] = await Promise.all([
+        this.bookingRepository.create({
+          _id: bookingId,
+          clientId: new Types.ObjectId(input.clientId),
+          businessId: service.businessId,
+          serviceId: new Types.ObjectId(input.serviceId),
+          startsAt,
+          endsAt: endWithBuffer,
+          duration: service.duration,
+          bufferBefore: service.bufferBefore,
+          bufferAfter: service.bufferAfter,
+          priceAtBooking: service.price,
+          status: BookingStatus.CONFIRMED,
+          idempotencyKey: input.idempotencyKey,
+        }),
+        this.cacheService.invalidateByTag(ck.moduleTag),
+      ]);
+
+      return this.bookingRepository.findOneById(
+        booking._id.toString(),
+        undefined,
+        {
+          populate: [
+            { path: 'business', select: 'name email phone' },
+            { path: 'service', select: 'name duration price' },
+          ],
+        },
+      );
+    } catch (error) {
+      await this.bookingLockService.releaseSlot({
+        businessId: service.businessId.toString(),
+        date: bookingDate,
+        bookingId: bookingId.toString(),
+      });
+      throw error;
+    }
   }
 
   async findById(bookingId: string) {
@@ -156,20 +186,22 @@ export class BookingService {
       throw new NotFoundException(RESOURCE_NOT_FOUND('Booking'));
     }
 
+    const bookingDate = DateBuilder.toISODateString(booking.startsAt);
+
     await Promise.all([
       this.bookingRepository.update(bookingId, {
         status: BookingStatus.CANCELLED,
         cancelledAt: DateBuilder.today().toDate(),
       }),
+      this.bookingLockService.releaseSlot({
+        businessId: booking.businessId.toString(),
+        date: bookingDate,
+        bookingId: booking._id.toString(),
+      }),
       this.cacheService.invalidateByTag(ck.moduleTag),
     ]);
 
-    return this.bookingRepository.findOneById(bookingId, undefined, {
-      populate: [
-        { path: 'business', select: 'name email phone' },
-        { path: 'service', select: 'name duration price' },
-      ],
-    });
+    return this.findById(bookingId);
   }
 
   async reschedule(
@@ -187,12 +219,31 @@ export class BookingService {
       throw new NotFoundException(RESOURCE_NOT_FOUND('Booking'));
     }
 
-    const totalMinutes =
-      booking.duration + booking.bufferBefore + booking.bufferAfter;
+    const oldBookingDate = DateBuilder.toISODateString(booking.startsAt);
+
     const newStartsAt = DateBuilder.from(input.startsAt).toDate();
-    const newEndsAt = DateBuilder.from(input.startsAt)
-      .addMinutes(totalMinutes)
+    const newStartWithBuffer = DateBuilder.from(newStartsAt)
+      .removeMinutes(booking.bufferBefore)
       .toDate();
+    const newEndWithBuffer = DateBuilder.from(newStartsAt)
+      .addMinutes(booking.duration + booking.bufferAfter)
+      .toDate();
+    const newBookingDate = DateBuilder.toISODateString(newStartsAt);
+
+    const swapSuccessful = await this.bookingLockService.atomicRescheduleSwap({
+      businessId: booking.businessId.toString(),
+      oldBookingId: booking._id.toString(),
+      oldDate: oldBookingDate,
+      newDate: newBookingDate,
+      newStart: newStartWithBuffer.getTime(),
+      newEnd: newEndWithBuffer.getTime(),
+    });
+
+    if (!swapSuccessful) {
+      throw new NotFoundException(
+        'New slot conflicts with existing booking or is being booked by another user',
+      );
+    }
 
     const [newBooking] = await Promise.all([
       this.bookingRepository.create({
@@ -200,7 +251,7 @@ export class BookingService {
         businessId: booking.businessId,
         serviceId: booking.serviceId,
         startsAt: newStartsAt,
-        endsAt: newEndsAt,
+        endsAt: newEndWithBuffer,
         duration: booking.duration,
         bufferBefore: booking.bufferBefore,
         bufferAfter: booking.bufferAfter,

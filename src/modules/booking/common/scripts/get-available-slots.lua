@@ -36,4 +36,8 @@ if finalGapDuration >= totalTimeNeeded then
     table.insert(gaps, { start = cursor, ["end"] = tonumber(ARGV[2]), duration = finalGapDuration })
 end
 
+if #gaps == 0 then
+    return '[]'
+end
+
 return cjson.encode(gaps)

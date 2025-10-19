@@ -7,7 +7,7 @@ import {
   GET_AVAILABLE_SLOTS_RESCHEDULE_SCRIPT,
   GET_AVAILABLE_SLOTS_SCRIPT,
 } from '../constants';
-import { BookingRange, SlotQueryParams } from '../dtos';
+import { BookingIdentifier, BookingRange, SlotQueryParams } from '../dtos';
 
 @Injectable()
 export class BookingLockService {
@@ -61,12 +61,15 @@ export class BookingLockService {
   /**
    * Release a booking slot (used when booking creation fails)
    */
-  async releaseSlot(range: BookingRange): Promise<void> {
-    const key = `bookings:${range.businessId}:${range.date}`;
+  async releaseSlot(identifier: BookingIdentifier): Promise<void> {
+    const key = `bookings:${identifier.businessId}:${identifier.date}`;
 
     await Promise.all([
-      this.redisService.instance.zRem(key, range.bookingId),
-      this.redisService.instance.hDel('booking_end_times', range.bookingId),
+      this.redisService.instance.zRem(key, identifier.bookingId),
+      this.redisService.instance.hDel(
+        'booking_end_times',
+        identifier.bookingId,
+      ),
     ]);
   }
 
@@ -133,42 +136,63 @@ export class BookingLockService {
       return [];
     }
 
-    const output = JSON.parse(result as string) as Array<{
-      start: number;
-      end: number;
-      duration: number;
-    }>;
+    let output: unknown;
 
-    return output.map((o) => ({
-      start: o.start,
-      end: o.end,
-      duration: Math.floor(o.duration / (60 * 1000)),
-    }));
+    if (typeof result === 'string') {
+      output = JSON.parse(result);
+    } else if (Array.isArray(result)) {
+      output = result;
+    } else {
+      return [];
+    }
+
+    if (!Array.isArray(output)) {
+      return [];
+    }
+
+    return output.map(
+      (o: { start: number; end: number; duration: number }) => ({
+        start: o.start,
+        end: o.end,
+        duration: Math.floor(o.duration / (60 * 1000)),
+      }),
+    );
   }
 
   async atomicRescheduleSwap(params: {
     businessId: string;
+    oldBookingId: string;
     oldDate: string;
-    oldStart: number;
-    oldEnd: number;
     newDate: string;
     newStart: number;
     newEnd: number;
-    bookingId: string;
   }): Promise<boolean> {
     const oldKey = `bookings:${params.businessId}:${params.oldDate}`;
     const newKey = `bookings:${params.businessId}:${params.newDate}`;
+
+    const oldStart = await this.redisService.instance.zScore(
+      oldKey,
+      params.oldBookingId,
+    );
+    const oldEnd = await this.redisService.instance.hGet(
+      'booking_end_times',
+      params.oldBookingId,
+    );
+
+    if (oldStart === null || oldEnd === null) {
+      return false;
+    }
 
     const result = await this.redisService.instance.evalSha(
       this.#rescheduleSwapScriptSha,
       {
         keys: [oldKey, newKey],
         arguments: [
-          params.oldStart.toString(),
-          params.oldEnd.toString(),
+          oldStart.toString(),
+          oldEnd,
           params.newStart.toString(),
           params.newEnd.toString(),
-          params.bookingId,
+          params.oldBookingId,
         ],
       },
     );

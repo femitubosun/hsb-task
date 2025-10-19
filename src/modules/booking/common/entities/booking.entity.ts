@@ -139,4 +139,3 @@ BookingSchema.index(
 
 BookingSchema.index({ clientId: 1, startsAt: -1 });
 BookingSchema.index({ businessId: 1, startsAt: 1 });
-BookingSchema.index({ idempotencyKey: 1 });
