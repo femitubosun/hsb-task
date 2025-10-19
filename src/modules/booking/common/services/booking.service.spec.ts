@@ -1,5 +1,6 @@
 import { CacheService } from '@/lib/cache/cache.service';
 import { FetchInput } from '@/lib/cache/dto';
+import { AvailabilityValidationService } from '@/modules/availability/common/services/availability-validation.service';
 import { ServiceDocument } from '@/modules/services/common/entities/service.entity';
 import { ServicesService } from '@/modules/services/common/services/services.service';
 import { NotFoundException } from '@nestjs/common';
@@ -103,8 +104,9 @@ describe('BookingService', () => {
     atomicRescheduleSwap: jest.fn(),
   };
 
-  const mockAvailabilityScheduleRepository = {
-    findOneByCondition: jest.fn(),
+  const mockAvailabilityValidationService = {
+    validateBookingTime: jest.fn(),
+    getEffectiveHoursForDate: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -116,8 +118,8 @@ describe('BookingService', () => {
           useValue: mockBookingRepository,
         },
         {
-          provide: 'IAvailabilityScheduleRepository',
-          useValue: mockAvailabilityScheduleRepository,
+          provide: AvailabilityValidationService,
+          useValue: mockAvailabilityValidationService,
         },
         {
           provide: CacheService,
@@ -143,18 +145,12 @@ describe('BookingService', () => {
     mockBookingLockService.tryAcquireSlot.mockReset();
     mockBookingLockService.releaseSlot.mockReset();
     mockBookingLockService.atomicRescheduleSwap.mockReset();
-    mockAvailabilityScheduleRepository.findOneByCondition.mockReset();
+    mockAvailabilityValidationService.validateBookingTime.mockReset();
+    mockAvailabilityValidationService.getEffectiveHoursForDate.mockReset();
 
-    mockAvailabilityScheduleRepository.findOneByCondition.mockResolvedValue({
-      _id: new Types.ObjectId(),
-      businessId: new Types.ObjectId(businessId),
-      daysOfWeek: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
-      startTime: '09:00',
-      endTime: '18:00',
-      effectiveFrom: new Date('2025-01-01T00:00:00Z'),
-      effectiveUntil: null,
-      isActive: true,
-    });
+    mockAvailabilityValidationService.validateBookingTime.mockResolvedValue(
+      undefined,
+    );
   });
 
   it('should be defined', () => {
