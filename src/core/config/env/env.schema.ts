@@ -42,4 +42,8 @@ export class EnvSchema {
 
   @IsString()
   BULL_MQ_REDIS_URL: string;
+
+  /* ----------------- WEBHOOK -------------------------------- */
+  @IsString()
+  BOOKING_EVENTS_URL: string;
 }

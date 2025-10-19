@@ -40,6 +40,7 @@
     "@nestjs/swagger": "^11.2.1",
     "@nestjs/terminus": "^11.0.0",
     "@scalar/nestjs-api-reference": "^1.0.5",
+    "axios": "^1.12.2",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.61.0",
     "class-transformer": "^0.5.1",

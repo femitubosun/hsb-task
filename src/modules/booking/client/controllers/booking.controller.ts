@@ -58,8 +58,8 @@ export class BookingController {
   }
 
   @Patch(':id/cancel')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(HttpStatus.OK)
   async cancel(@Param('id') id: string, @AuthUser() user: SessionUser) {
-    await this.bookingService.cancel(id, user._id);
+    return this.bookingService.cancel(id, user._id);
   }
 }

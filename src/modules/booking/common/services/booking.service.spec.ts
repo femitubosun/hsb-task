@@ -1,6 +1,9 @@
 import { CacheService } from '@/lib/cache/cache.service';
 import { FetchInput } from '@/lib/cache/dto';
+import { QueueService } from '@/lib/queue/queue.service';
 import { AvailabilityValidationService } from '@/modules/availability/common/services/availability-validation.service';
+import { OutboxEventDocument } from '@/modules/outbox/common/entities/outbox-event.entity';
+import { OutboxService } from '@/modules/outbox/common/services/outbox.service';
 import { ServiceDocument } from '@/modules/services/common/entities/service.entity';
 import { ServicesService } from '@/modules/services/common/services/services.service';
 import { NotFoundException } from '@nestjs/common';
@@ -63,6 +66,21 @@ describe('BookingService', () => {
     deletedAt: null,
   } as unknown as BookingDocument;
 
+  const createMockOutboxEvent = (eventType: string): OutboxEventDocument => {
+    return {
+      _id: new Types.ObjectId(),
+      type: eventType,
+      payload: {},
+      status: 'pending',
+      aggregateId: bookingId,
+      retryCount: 0,
+      error: null,
+      processedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as OutboxEventDocument;
+  };
+
   const mockCreateInput: CreateBookingInput = {
     clientId,
     serviceId,
@@ -104,6 +122,14 @@ describe('BookingService', () => {
     atomicRescheduleSwap: jest.fn(),
   };
 
+  const mockQueueService = {
+    enqueueJob: jest.fn(),
+  } as jest.Mocked<Pick<QueueService, 'enqueueJob'>>;
+
+  const mockOutboxService = {
+    createEvent: jest.fn(),
+  } as jest.Mocked<Pick<OutboxService, 'createEvent'>>;
+
   const mockAvailabilityValidationService = {
     validateBookingTime: jest.fn(),
     getEffectiveHoursForDate: jest.fn(),
@@ -132,6 +158,14 @@ describe('BookingService', () => {
         {
           provide: BookingLockService,
           useValue: mockBookingLockService,
+        },
+        {
+          provide: QueueService,
+          useValue: mockQueueService,
+        },
+        {
+          provide: OutboxService,
+          useValue: mockOutboxService,
         },
       ],
     }).compile();
@@ -162,12 +196,16 @@ describe('BookingService', () => {
 
   describe('create', () => {
     it('should create a new booking and invalidate cache', async () => {
+      const mockOutboxEvent = createMockOutboxEvent('booking.created');
+
       mockServicesService.findOneById.mockResolvedValue(
         mockServiceData as ServiceDocument,
       );
       mockBookingRepository.findOneByCondition.mockResolvedValue(null);
       mockBookingLockService.tryAcquireSlot.mockResolvedValue(true);
       mockBookingRepository.create.mockResolvedValue(mockBooking);
+      mockOutboxService.createEvent.mockResolvedValue(mockOutboxEvent);
+      mockQueueService.enqueueJob.mockResolvedValue(undefined);
       mockBookingRepository.findOneById.mockResolvedValue(mockBooking);
       mockCacheService.invalidateByTag.mockResolvedValue(undefined);
 
@@ -199,17 +237,41 @@ describe('BookingService', () => {
           idempotencyKey,
         }),
       );
+      expect(mockOutboxService.createEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'booking.created',
+          payload: expect.objectContaining({
+            bookingId: expect.any(String) as string,
+            clientId,
+            businessId,
+            serviceId,
+            priceAtBooking: 50.0,
+          }) as Record<string, unknown>,
+        }) as { type: string; payload: Record<string, unknown> },
+      );
+      expect(mockQueueService.enqueueJob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queueName: 'processOutboxQ',
+          data: {
+            eventId: mockOutboxEvent._id.toString(),
+          },
+        }),
+      );
       expect(mockCacheService.invalidateByTag).toHaveBeenCalled();
       expect(result).toEqual(mockBooking);
     });
 
     it('should calculate endsAt correctly including buffers', async () => {
+      const mockOutboxEvent = createMockOutboxEvent('booking.created');
+
       mockServicesService.findOneById.mockResolvedValue(
         mockServiceData as ServiceDocument,
       );
       mockBookingRepository.findOneByCondition.mockResolvedValue(null);
       mockBookingLockService.tryAcquireSlot.mockResolvedValue(true);
       mockBookingRepository.create.mockResolvedValue(mockBooking);
+      mockOutboxService.createEvent.mockResolvedValue(mockOutboxEvent);
+      mockQueueService.enqueueJob.mockResolvedValue(undefined);
       mockBookingRepository.findOneById.mockResolvedValue(mockBooking);
       mockCacheService.invalidateByTag.mockResolvedValue(undefined);
 
@@ -243,6 +305,8 @@ describe('BookingService', () => {
     });
 
     it('should handle repository creation errors', async () => {
+      const mockOutboxEvent = createMockOutboxEvent('booking.created');
+
       mockServicesService.findOneById.mockResolvedValue(
         mockServiceData as ServiceDocument,
       );
@@ -251,6 +315,7 @@ describe('BookingService', () => {
       mockBookingRepository.create.mockRejectedValue(
         new Error('Database error'),
       );
+      mockOutboxService.createEvent.mockResolvedValue(mockOutboxEvent);
 
       await expect(service.create(mockCreateInput)).rejects.toThrow(
         'Database error',
@@ -403,6 +468,8 @@ describe('BookingService', () => {
 
   describe('cancel', () => {
     it('should cancel a booking and invalidate cache', async () => {
+      const mockOutboxEvent = createMockOutboxEvent('booking.cancelled');
+
       const cancelledAt = new Date('2025-01-16T10:00:00Z');
       const cancelledBooking = {
         ...mockBooking,
@@ -414,6 +481,9 @@ describe('BookingService', () => {
         .mockResolvedValueOnce(mockBooking)
         .mockResolvedValueOnce(cancelledBooking);
       mockBookingRepository.update.mockResolvedValue(cancelledBooking);
+      mockOutboxService.createEvent.mockResolvedValue(mockOutboxEvent);
+      mockQueueService.enqueueJob.mockResolvedValue(undefined);
+      mockBookingLockService.releaseSlot.mockResolvedValue(undefined);
       mockCacheService.invalidateByTag.mockResolvedValue(undefined);
 
       const result = await service.cancel(bookingId, clientId);
@@ -424,6 +494,30 @@ describe('BookingService', () => {
       expect(updateCall.status).toBe(BookingStatus.CANCELLED);
       expect(updateCall.cancelledAt).toBeInstanceOf(Date);
 
+      expect(mockOutboxService.createEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'booking.cancelled',
+          aggregateId: bookingId,
+          payload: expect.objectContaining({
+            bookingId,
+            clientId,
+            businessId: businessId,
+          }) as Record<string, unknown>,
+        }) as {
+          type: string;
+          aggregateId: string;
+          payload: Record<string, unknown>;
+        },
+      );
+      expect(mockQueueService.enqueueJob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queueName: 'processOutboxQ',
+          data: {
+            eventId: mockOutboxEvent._id.toString(),
+          },
+        }),
+      );
+      expect(mockBookingLockService.releaseSlot).toHaveBeenCalled();
       expect(mockCacheService.invalidateByTag).toHaveBeenCalled();
       expect(result).toEqual(cancelledBooking);
     });
@@ -463,6 +557,8 @@ describe('BookingService', () => {
     };
 
     it('should create new booking and cancel old one', async () => {
+      const mockOutboxEvent = createMockOutboxEvent('booking.rescheduled');
+
       const newBooking = {
         ...mockBooking,
         _id: new Types.ObjectId(),
@@ -482,6 +578,8 @@ describe('BookingService', () => {
         ...mockBooking,
         status: BookingStatus.CANCELLED,
       } as BookingDocument);
+      mockOutboxService.createEvent.mockResolvedValue(mockOutboxEvent);
+      mockQueueService.enqueueJob.mockResolvedValue(undefined);
       mockCacheService.invalidateByTag.mockResolvedValue(undefined);
 
       const result = await service.reschedule(
@@ -502,20 +600,43 @@ describe('BookingService', () => {
       expect(updateCall.status).toBe(BookingStatus.CANCELLED);
       expect(updateCall.cancelledAt).toBeInstanceOf(Date);
       expect(updateCall.cancellationReason).toBe('rescheduled');
+      expect(mockOutboxService.createEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'booking.rescheduled',
+          payload: expect.objectContaining({
+            oldBookingId: bookingId,
+            clientId,
+          }) as Record<string, unknown>,
+        }) as { type: string; payload: Record<string, unknown> },
+      );
+      expect(mockQueueService.enqueueJob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queueName: 'processOutboxQ',
+          data: {
+            eventId: mockOutboxEvent._id.toString(),
+          },
+        }),
+      );
       expect(result).toEqual(newBooking);
     });
 
     it('should preserve service details in rescheduled booking', async () => {
+      const mockOutboxEvent = createMockOutboxEvent('booking.rescheduled');
+
       const newBooking = {
         ...mockBooking,
         _id: new Types.ObjectId(),
         startsAt: rescheduleInput.startsAt,
       } as BookingDocument;
 
-      mockBookingRepository.findOneById.mockResolvedValue(mockBooking);
+      mockBookingRepository.findOneById
+        .mockResolvedValueOnce(mockBooking)
+        .mockResolvedValueOnce(newBooking);
       mockBookingLockService.atomicRescheduleSwap.mockResolvedValue(true);
       mockBookingRepository.create.mockResolvedValue(newBooking);
       mockBookingRepository.update.mockResolvedValue(mockBooking);
+      mockOutboxService.createEvent.mockResolvedValue(mockOutboxEvent);
+      mockQueueService.enqueueJob.mockResolvedValue(undefined);
       mockCacheService.invalidateByTag.mockResolvedValue(undefined);
 
       await service.reschedule(bookingId, clientId, rescheduleInput);

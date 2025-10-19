@@ -14,4 +14,4 @@ import { Module } from '@nestjs/common';
     }),
   ],
 })
-export class QueueModule {}
+export class BullMqModule {}

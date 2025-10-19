@@ -1,12 +1,12 @@
 import { Global, Module } from '@nestjs/common';
-import { DbModule } from './db/db.module';
+import { BullMqModule } from './bullmq/bullmq.module';
 import { CronModule } from './cron/cron.module';
-import { QueueModule } from './queue/queue.module';
+import { DbModule } from './db/db.module';
 import { RedisModule } from './redis/redis.module';
 
 @Global()
 @Module({
-  imports: [DbModule, RedisModule, QueueModule, CronModule],
+  imports: [DbModule, RedisModule, BullMqModule, CronModule],
   exports: [RedisModule],
 })
 export class InfraModule {}
