@@ -1,0 +1,45 @@
+version: "3.8"
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: hsb-mongo-dev
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: dev123
+    volumes:
+      - mongo_data:/data/db
+
+  redis:
+    image: redis:7-alpine
+    container_name: hsb-redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    container_name: hsb-api-dev
+    ports:
+      - "5800:5800"
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: mongodb://admin:dev123@mongodb:27017/hsb_booking?authSource=admin
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - mongodb
+      - redis
+    command: pnpm run start:dev
+
+volumes:
+  mongo_data:
+  redis_data:

@@ -108,6 +108,39 @@ export class AuthService {
   }
 
   /**
+   * @description Registers a new admin user and creates an authentication session.
+   * @param input The signup request data containing user information.
+   * @param role user role
+   * @returns An object containing the JWT token and user session data.
+   * @throws ConflictException if a user with the email already exists.
+   */
+  async signupAdmin(input: SignupRequestDto): Promise<AuthResponseDto> {
+    const existingUser = await this.userService.findByEmail(input.email);
+
+    if (existingUser) {
+      throw new ConflictException(USER_EXISTS);
+    }
+
+    const user = await this.userService.create({
+      ...input,
+      role: 'admin',
+    });
+
+    if (!user) {
+      throw new InternalServerErrorException(SOMETHING_WENT_WRONG);
+    }
+
+    const authUser = this.#toSessionUser(user);
+
+    const token = await this.#createAuthSessionForUser(authUser);
+
+    return {
+      token,
+      user: authUser,
+    };
+  }
+
+  /**
    * @description Authenticates an existing user and creates a new session.
    * @param input The signin request data containing email and password.
    * @returns An object containing the JWT token and user session data.

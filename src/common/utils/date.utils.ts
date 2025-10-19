@@ -51,8 +51,38 @@ export class DateBuilder {
     return new DateBuilder(date);
   }
 
+  static timeToEpoch(date: Date | string, time: string): number {
+    return DateBuilder.from(typeof date === 'string' ? new Date(date) : date)
+      .setTime(time)
+      .toEpoch();
+  }
+
+  static epochToTime(epoch: number): string {
+    return DateBuilder.from(new Date(epoch)).getTime();
+  }
+
+  static toISODateString(date: Date): string {
+    return date.toISOString().split('T')[0];
+  }
+
+  setTime(time: string) {
+    const [hours, minutes] = time.split(':').map(Number);
+    this.date.setUTCHours(hours, minutes, 0, 0);
+    return this;
+  }
+
+  getTime(): string {
+    const hours = String(this.date.getUTCHours()).padStart(2, '0');
+    const minutes = String(this.date.getUTCMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }
+
+  toEpoch(): number {
+    return this.date.getTime();
+  }
+
   toDateString() {
-    return this.date.toISOString().split('T')[0];
+    return DateBuilder.toISODateString(this.date);
   }
 
   toDate() {

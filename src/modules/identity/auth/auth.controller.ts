@@ -1,23 +1,23 @@
+import { AuthUser, Public } from '@/common/decorators';
+import { AuthService } from '@/modules/identity/auth/services';
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Post,
-  Get,
 } from '@nestjs/common';
-import { AuthUser, Public } from '@/common/decorators';
-import { AuthService } from '@/modules/identity/auth/services';
 
+import { MessageResponseDto } from '@/common/dtos/response/message-response.dto';
+import type { SessionUser } from '@/common/types/auth-session.type';
 import {
   SigninRequestDto,
   SignupBusinessRequestDto,
   SignupRequestDto,
 } from '@/modules/identity/auth/dtos/request';
 import { AuthResponseDto } from '@/modules/identity/auth/dtos/response';
-import { MessageResponseDto } from '@/common/dtos/response/message-response.dto';
 import { LOGOUT_SUCCESSFUL } from '@/modules/identity/auth/message';
-import type { SessionUser } from '@/common/types/auth-session.type';
 
 @Controller('auth')
 export class AuthController {
@@ -37,6 +37,12 @@ export class AuthController {
     @Body() input: SignupBusinessRequestDto,
   ): Promise<AuthResponseDto> {
     return this.authService.signupBusiness(input);
+  }
+
+  @Public()
+  @Post('signup/admin')
+  async signUpAdmin(@Body() input: SignupRequestDto): Promise<AuthResponseDto> {
+    return this.authService.signupAdmin(input);
   }
 
   @Public()

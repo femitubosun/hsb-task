@@ -11,6 +11,7 @@ import {
   BookingStatus,
 } from '../entities/booking.entity';
 import type { IBookingRepository } from '../interfaces/booking-repository.interface';
+import { BookingLockService } from './booking-lock.service';
 import { BookingService } from './booking.service';
 
 describe('BookingService', () => {
@@ -96,6 +97,12 @@ describe('BookingService', () => {
     findOneById: jest.fn(),
   } as jest.Mocked<Pick<ServicesService, 'findOneById'>>;
 
+  const mockBookingLockService = {
+    tryAcquireSlot: jest.fn(),
+    releaseSlot: jest.fn(),
+    atomicRescheduleSwap: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -112,6 +119,10 @@ describe('BookingService', () => {
           provide: ServicesService,
           useValue: mockServicesService,
         },
+        {
+          provide: BookingLockService,
+          useValue: mockBookingLockService,
+        },
       ],
     }).compile();
 
@@ -121,6 +132,9 @@ describe('BookingService', () => {
     servicesService = module.get<ServicesService>(ServicesService);
 
     jest.clearAllMocks();
+    mockBookingLockService.tryAcquireSlot.mockReset();
+    mockBookingLockService.releaseSlot.mockReset();
+    mockBookingLockService.atomicRescheduleSwap.mockReset();
   });
 
   it('should be defined', () => {
@@ -136,6 +150,7 @@ describe('BookingService', () => {
         mockServiceData as ServiceDocument,
       );
       mockBookingRepository.findOneByCondition.mockResolvedValue(null);
+      mockBookingLockService.tryAcquireSlot.mockResolvedValue(true);
       mockBookingRepository.create.mockResolvedValue(mockBooking);
       mockBookingRepository.findOneById.mockResolvedValue(mockBooking);
       mockCacheService.invalidateByTag.mockResolvedValue(undefined);
@@ -177,6 +192,7 @@ describe('BookingService', () => {
         mockServiceData as ServiceDocument,
       );
       mockBookingRepository.findOneByCondition.mockResolvedValue(null);
+      mockBookingLockService.tryAcquireSlot.mockResolvedValue(true);
       mockBookingRepository.create.mockResolvedValue(mockBooking);
       mockBookingRepository.findOneById.mockResolvedValue(mockBooking);
       mockCacheService.invalidateByTag.mockResolvedValue(undefined);
@@ -191,7 +207,10 @@ describe('BookingService', () => {
       const duration =
         (createCall.endsAt!.getTime() - createCall.startsAt!.getTime()) /
         (60 * 1000);
-      expect(duration).toBe(75);
+      expect(duration).toBe(65);
+      expect(createCall.duration).toBe(60);
+      expect(createCall.bufferBefore).toBe(10);
+      expect(createCall.bufferAfter).toBe(5);
     });
 
     it('should throw NotFoundException when service does not exist', async () => {
@@ -212,6 +231,7 @@ describe('BookingService', () => {
         mockServiceData as ServiceDocument,
       );
       mockBookingRepository.findOneByCondition.mockResolvedValue(null);
+      mockBookingLockService.tryAcquireSlot.mockResolvedValue(true);
       mockBookingRepository.create.mockRejectedValue(
         new Error('Database error'),
       );
@@ -219,6 +239,8 @@ describe('BookingService', () => {
       await expect(service.create(mockCreateInput)).rejects.toThrow(
         'Database error',
       );
+
+      expect(mockBookingLockService.releaseSlot).toHaveBeenCalled();
     });
 
     it('should return existing booking when idempotency key already exists', async () => {
@@ -436,6 +458,7 @@ describe('BookingService', () => {
       mockBookingRepository.findOneById
         .mockResolvedValueOnce(mockBooking)
         .mockResolvedValueOnce(newBooking as BookingDocument);
+      mockBookingLockService.atomicRescheduleSwap.mockResolvedValue(true);
       mockBookingRepository.create.mockResolvedValue(
         newBooking as BookingDocument,
       );
@@ -474,6 +497,7 @@ describe('BookingService', () => {
       } as BookingDocument;
 
       mockBookingRepository.findOneById.mockResolvedValue(mockBooking);
+      mockBookingLockService.atomicRescheduleSwap.mockResolvedValue(true);
       mockBookingRepository.create.mockResolvedValue(newBooking);
       mockBookingRepository.update.mockResolvedValue(mockBooking);
       mockCacheService.invalidateByTag.mockResolvedValue(undefined);
@@ -530,6 +554,7 @@ describe('BookingService', () => {
         mockServiceData as ServiceDocument,
       );
       mockBookingRepository.findOneByCondition.mockResolvedValue(null);
+      mockBookingLockService.tryAcquireSlot.mockResolvedValue(true);
       mockBookingRepository.create.mockResolvedValueOnce(mockBooking);
       mockCacheService.invalidateByTag.mockResolvedValue(undefined);
       mockCacheService.fetch.mockImplementation(
@@ -550,6 +575,7 @@ describe('BookingService', () => {
       const found = await service.findById(bookingId);
       expect(found).toEqual(mockBooking);
 
+      mockBookingLockService.atomicRescheduleSwap.mockResolvedValue(true);
       mockBookingRepository.create.mockResolvedValueOnce(
         newBooking as BookingDocument,
       );

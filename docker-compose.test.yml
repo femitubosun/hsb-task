@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: hsb-mongo-test
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: test123
+    tmpfs:
+      - /data/db
+
+  redis:
+    image: redis:7-alpine
+    container_name: hsb-redis-test
+    ports:
+      - "6380:6379"
+    command: redis-server --save "" --appendonly no
+    tmpfs:
+      - /data
