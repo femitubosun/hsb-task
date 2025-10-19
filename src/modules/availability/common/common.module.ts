@@ -10,6 +10,7 @@ import {
   AvailabilityOverrideRepository,
   AvailabilityScheduleRepository,
 } from './repositories';
+import { AvailabilityValidationService } from './services/availability-validation.service';
 
 const ENTITIES = [
   {
@@ -33,10 +34,12 @@ const ENTITIES = [
       provide: 'IAvailabilityScheduleRepository',
       useClass: AvailabilityScheduleRepository,
     },
+    AvailabilityValidationService,
   ],
   exports: [
     'IAvailabilityOverrideRepository',
     'IAvailabilityScheduleRepository',
+    AvailabilityValidationService,
   ],
 })
 export class CommonModule {}
