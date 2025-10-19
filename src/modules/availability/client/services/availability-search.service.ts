@@ -13,6 +13,7 @@ import type {
   IAvailabilityOverrideRepository,
   IAvailabilityScheduleRepository,
 } from '../../common/interfaces';
+import { AvailabilityValidationService } from '../../common/services/availability-validation.service';
 import {
   AvailabilitySearchRequestDto,
   AvailabilitySearchResponseDto,
@@ -35,6 +36,7 @@ export class AvailabilitySearchService {
     private readonly availabilityOverrideRepository: IAvailabilityOverrideRepository,
     @Inject('IServicesRepository')
     private readonly serviceRepository: IServiceRepository,
+    private readonly availabilityValidationService: AvailabilityValidationService,
     private readonly lockService: BookingLockService,
     private readonly cacheService: CacheService,
   ) {}
@@ -148,53 +150,38 @@ export class AvailabilitySearchService {
     const current = new Date(effectiveStart);
 
     while (current <= effectiveEnd) {
-      const dayOfWeek = this.#getDayOfWeekName(current.getDay());
+      const hours =
+        await this.availabilityValidationService.getEffectiveHoursForDate(
+          businessId,
+          current,
+        );
 
-      if (config.schedule.daysOfWeek.includes(dayOfWeek)) {
+      if (hours) {
         const dateStr = DateBuilder.toISODateString(current);
-        const override = config.overrideMap.get(dateStr);
 
-        if (override?.type !== 'closed') {
-          const dayStart = override?.startTime || config.schedule.startTime;
-          const dayEnd = override?.endTime || config.schedule.endTime;
+        const gaps = await this.lockService.getAvailableSlots({
+          businessId,
+          date: dateStr,
+          dayStart: DateBuilder.timeToEpoch(dateStr, hours.startTime),
+          dayEnd: DateBuilder.timeToEpoch(dateStr, hours.endTime),
+          serviceDuration: service.duration,
+          bufferBefore: service.bufferBefore,
+          bufferAfter: service.bufferAfter,
+        });
 
-          const gaps = await this.lockService.getAvailableSlots({
-            businessId,
+        gaps.forEach((gap) => {
+          slots.push({
             date: dateStr,
-            dayStart: DateBuilder.timeToEpoch(dateStr, dayStart),
-            dayEnd: DateBuilder.timeToEpoch(dateStr, dayEnd),
-            serviceDuration: service.duration,
-            bufferBefore: service.bufferBefore,
-            bufferAfter: service.bufferAfter,
+            startTime: DateBuilder.epochToTime(gap.start),
+            endTime: DateBuilder.epochToTime(gap.end),
+            duration: gap.duration,
           });
-
-          gaps.forEach((gap) => {
-            slots.push({
-              date: dateStr,
-              startTime: DateBuilder.epochToTime(gap.start),
-              endTime: DateBuilder.epochToTime(gap.end),
-              duration: gap.duration,
-            });
-          });
-        }
+        });
       }
 
       current.setDate(current.getDate() + 1);
     }
 
     return slots;
-  }
-
-  #getDayOfWeekName(day: number): string {
-    const days = [
-      'sunday',
-      'monday',
-      'tuesday',
-      'wednesday',
-      'thursday',
-      'friday',
-      'saturday',
-    ];
-    return days[day];
   }
 }
