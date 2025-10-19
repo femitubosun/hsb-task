@@ -1,5 +1,7 @@
 import { CacheModule } from '@/lib/cache/cache.module';
+import { QueueModule } from '@/lib/queue/queue.module';
 import { CommonModule as AvailabilityCommonModule } from '@/modules/availability/common/common.module';
+import { CommonModule as OutboxCommonModule } from '@/modules/outbox/common/common.module';
 import { CommonModule as ServicesCommonModule } from '@/modules/services/common/common.module';
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -20,7 +22,9 @@ const ENTITIES = [
     MongooseModule.forFeature(ENTITIES),
     ServicesCommonModule,
     AvailabilityCommonModule,
+    OutboxCommonModule,
     CacheModule,
+    QueueModule,
   ],
   providers: [
     BookingService,

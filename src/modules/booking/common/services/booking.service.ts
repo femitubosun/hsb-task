@@ -3,7 +3,10 @@ import { RESOURCE_NOT_FOUND } from '@/common/messages';
 import { DateBuilder } from '@/common/utils/date.utils';
 import { ckMaker } from '@/lib/cache/cache-key.builder';
 import { CacheService } from '@/lib/cache/cache.service';
+import { QueueName, QueueService } from '@/lib/queue/queue.service';
 import { AvailabilityValidationService } from '@/modules/availability/common/services/availability-validation.service';
+import { OutboxEventType } from '@/modules/outbox/common/enums';
+import { OutboxService } from '@/modules/outbox/common/services/outbox.service';
 import { ServicesService } from '@/modules/services/common/services/services.service';
 import {
   BadRequestException,
@@ -26,6 +29,8 @@ export class BookingService {
     private readonly cacheService: CacheService,
     private readonly servicesService: ServicesService,
     private readonly bookingLockService: BookingLockService,
+    private readonly queueService: QueueService,
+    private readonly outboxService: OutboxService,
   ) {}
 
   async create(input: CreateBookingInput) {
@@ -87,7 +92,7 @@ export class BookingService {
     }
 
     try {
-      const [booking] = await Promise.all([
+      const [booking, outboxEvent] = await Promise.all([
         this.bookingRepository.create({
           _id: bookingId,
           clientId: new Types.ObjectId(input.clientId),
@@ -102,8 +107,27 @@ export class BookingService {
           status: BookingStatus.CONFIRMED,
           idempotencyKey: input.idempotencyKey,
         }),
+        this.outboxService.createEvent({
+          type: OutboxEventType.BOOKING_CREATED,
+          aggregateId: bookingId.toString(),
+          payload: {
+            bookingId: bookingId.toString(),
+            clientId: input.clientId,
+            businessId: service.businessId.toString(),
+            serviceId: input.serviceId,
+            startsAt: startsAt.toISOString(),
+            priceAtBooking: service.price,
+          },
+        }),
         this.cacheService.invalidateByTag(ck.moduleTag),
       ]);
+
+      await this.queueService.enqueueJob({
+        queueName: QueueName.ProcessOutboxQ,
+        data: {
+          eventId: outboxEvent._id.toString(),
+        },
+      });
 
       return this.bookingRepository.findOneById(
         booking._id.toString(),
@@ -213,13 +237,26 @@ export class BookingService {
     const cancellationFee = price * penaltyMultiplier;
     const refundAmount = price - cancellationFee;
 
-    await Promise.all([
+    const [, outboxEvent] = await Promise.all([
       this.bookingRepository.update(bookingId, {
         status: BookingStatus.CANCELLED,
         cancelledAt: now.toDate(),
         refundedAt: now.toDate(),
         refundAmount,
         cancellationFee,
+      }),
+      this.outboxService.createEvent({
+        type: OutboxEventType.BOOKING_CANCELLED,
+        aggregateId: bookingId,
+        payload: {
+          bookingId,
+          clientId,
+          businessId: booking.businessId.toString(),
+          cancelledAt: now.toDate().toISOString(),
+          refundAmount,
+          cancellationFee,
+          isLateCancellation,
+        },
       }),
       this.bookingLockService.releaseSlot({
         businessId: booking.businessId.toString(),
@@ -228,6 +265,13 @@ export class BookingService {
       }),
       this.cacheService.invalidateByTag(ck.moduleTag),
     ]);
+
+    await this.queueService.enqueueJob({
+      queueName: QueueName.ProcessOutboxQ,
+      data: {
+        eventId: outboxEvent._id.toString(),
+      },
+    });
 
     return this.findById(bookingId);
   }
@@ -279,8 +323,11 @@ export class BookingService {
       );
     }
 
-    const [newBooking] = await Promise.all([
+    const newBookingId = new Types.ObjectId();
+
+    const [newBooking, , outboxEvent] = await Promise.all([
       this.bookingRepository.create({
+        _id: newBookingId,
         clientId: booking.clientId,
         businessId: booking.businessId,
         serviceId: booking.serviceId,
@@ -299,8 +346,27 @@ export class BookingService {
         cancelledAt: DateBuilder.today().toDate(),
         cancellationReason: 'rescheduled',
       }),
+      this.outboxService.createEvent({
+        type: OutboxEventType.BOOKING_RESCHEDULED,
+        aggregateId: newBookingId.toString(),
+        payload: {
+          oldBookingId: bookingId,
+          newBookingId: newBookingId.toString(),
+          clientId,
+          businessId: booking.businessId.toString(),
+          oldStartsAt: booking.startsAt.toISOString(),
+          newStartsAt: newStartsAt.toISOString(),
+        },
+      }),
       this.cacheService.invalidateByTag(ck.moduleTag),
     ]);
+
+    await this.queueService.enqueueJob({
+      queueName: QueueName.ProcessOutboxQ,
+      data: {
+        eventId: outboxEvent._id.toString(),
+      },
+    });
 
     return this.bookingRepository.findOneById(
       newBooking._id.toString(),
