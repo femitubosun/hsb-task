@@ -239,7 +239,7 @@ describe('BookingController (Client)', () => {
 
       const result = await controller.cancel(bookingId, mockUser);
 
-      expect(result).toBeUndefined();
+      expect(result).toBe(cancelledBooking);
     });
   });
 });
