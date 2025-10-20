@@ -46,4 +46,11 @@ export class EnvSchema {
   /* ----------------- WEBHOOK -------------------------------- */
   @IsString()
   BOOKING_EVENTS_URL: string;
+
+  /* --------------- RATE LIMITING -------------------- */
+  @IsNumber()
+  THROTTLE_TTL: number;
+
+  @IsNumber()
+  THROTTLE_LIMIT: number;
 }

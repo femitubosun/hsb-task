@@ -98,6 +98,9 @@ export class AvailabilityValidationService {
   async validateBookingTime(
     businessId: string,
     bookingDate: Date,
+    serviceDuration: number,
+    bufferBefore: number,
+    bufferAfter: number,
   ): Promise<void> {
     const hours = await this.getEffectiveHoursForDate(businessId, bookingDate);
 
@@ -108,10 +111,22 @@ export class AvailabilityValidationService {
     }
 
     const bookingTime = DateBuilder.from(bookingDate).getTime();
+    const bookingStartWithBuffer = DateBuilder.from(bookingDate)
+      .removeMinutes(bufferBefore)
+      .getTime();
+    const bookingEndWithBuffer = DateBuilder.from(bookingDate)
+      .addMinutes(serviceDuration + bufferAfter)
+      .getTime();
 
-    if (bookingTime < hours.startTime || bookingTime >= hours.endTime) {
+    if (bookingStartWithBuffer < hours.startTime) {
       throw new BadRequestException(
-        `Booking time ${bookingTime} is outside business hours (${hours.startTime} - ${hours.endTime})`,
+        `Booking at ${bookingTime} with ${bufferBefore}-minute buffer would start at ${bookingStartWithBuffer}, which is before business hours (${hours.startTime})`,
+      );
+    }
+
+    if (bookingEndWithBuffer > hours.endTime) {
+      throw new BadRequestException(
+        `Booking at ${bookingTime} with ${serviceDuration}-minute duration and ${bufferAfter}-minute buffer would end at ${bookingEndWithBuffer}, which is after business hours (${hours.endTime})`,
       );
     }
   }

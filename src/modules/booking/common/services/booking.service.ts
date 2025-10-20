@@ -66,6 +66,9 @@ export class BookingService {
     await this.availabilityValidationService.validateBookingTime(
       service.businessId.toString(),
       startsAt,
+      service.duration,
+      service.bufferBefore,
+      service.bufferAfter,
     );
 
     const startWithBuffer = DateBuilder.from(startsAt)
@@ -297,6 +300,9 @@ export class BookingService {
     await this.availabilityValidationService.validateBookingTime(
       booking.businessId.toString(),
       newStartsAt,
+      booking.duration,
+      booking.bufferBefore,
+      booking.bufferAfter,
     );
 
     const newStartWithBuffer = DateBuilder.from(newStartsAt)
