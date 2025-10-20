@@ -137,6 +137,9 @@ jobs:
           REDIS_URL: redis://localhost:6379
           DATABASE_URL: mongodb://localhost:27017/hsb-test
           BULL_MQ_REDIS_URL: redis://localhost:6379
+          BOOKING_EVENTS_URL: https://webhook.site/497555f1-ec2a-4e18-8d9a-13843b2ad414
+          THROTTLE_TTL: 1000
+          THROTTLE_LIMIT: 3
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
@@ -204,6 +207,8 @@ jobs:
           DATABASE_URL: mongodb://localhost:27017/hsb-test
           BULL_MQ_REDIS_URL: redis://localhost:6379
           BOOKING_EVENTS_URL: https://webhook.site/497555f1-ec2a-4e18-8d9a-13843b2ad414
+          THROTTLE_TTL: 1000
+          THROTTLE_LIMIT: 3
 
   quality-gate:
     name: Quality Gate
