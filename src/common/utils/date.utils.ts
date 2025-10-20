@@ -9,6 +9,14 @@ export class DateBuilder {
     return new DateBuilder();
   }
 
+  static now() {
+    return new DateBuilder(new Date());
+  }
+
+  static utcNow() {
+    return new DateBuilder(new Date());
+  }
+
   static date(year: number, month: number, day: number) {
     return new DateBuilder(new Date(Date.UTC(year, month - 1, day)));
   }

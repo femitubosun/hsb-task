@@ -1,5 +1,6 @@
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { ConfigService } from './core/config/config.service';
 import { setupApiDocumentation } from './documentation';
@@ -15,6 +16,8 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1', {
     exclude: ['/api/docs/json', '/api/docs/ref'],
   });
+
+  app.use(helmet());
 
   app.useGlobalPipes(
     new ValidationPipe({
