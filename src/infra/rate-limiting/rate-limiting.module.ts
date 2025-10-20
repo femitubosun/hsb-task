@@ -2,14 +2,11 @@ import { ConfigModule } from '@/core/config/config.module';
 import { ConfigService } from '@/core/config/config.service';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import {
-  ThrottlerModule as NestThrottlerModule,
-  ThrottlerGuard,
-} from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
-    NestThrottlerModule.forRootAsync({
+    ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
@@ -29,4 +26,4 @@ import {
     },
   ],
 })
-export class ThrottlerModule {}
+export class RateLimitingModule {}
