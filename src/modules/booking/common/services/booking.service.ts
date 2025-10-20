@@ -18,6 +18,7 @@ import { Types } from 'mongoose';
 import { CreateBookingInput, RescheduleBookingInput } from '../dtos';
 import { BookingStatus } from '../entities/booking.entity';
 import type { IBookingRepository } from '../interfaces/booking-repository.interface';
+import { TIME_NOT_AVAILABLE_FOR_BOOKING } from '../messages';
 import { BookingLockService } from './booking-lock.service';
 
 @Injectable()
@@ -86,9 +87,7 @@ export class BookingService {
     });
 
     if (!lockAcquired) {
-      throw new BadRequestException(
-        'Slot conflicts with existing booking or is being booked by another user',
-      );
+      throw new BadRequestException(TIME_NOT_AVAILABLE_FOR_BOOKING);
     }
 
     try {
@@ -225,7 +224,7 @@ export class BookingService {
 
     const bookingDate = DateBuilder.toISODateString(booking.startsAt);
 
-    const now = DateBuilder.today();
+    const now = DateBuilder.now();
     const twelveHoursBeforeBooking = DateBuilder.from(
       booking.startsAt,
     ).removeHours(12);
@@ -343,7 +342,7 @@ export class BookingService {
       }),
       this.bookingRepository.update(bookingId, {
         status: BookingStatus.CANCELLED,
-        cancelledAt: DateBuilder.today().toDate(),
+        cancelledAt: DateBuilder.now().toDate(),
         cancellationReason: 'rescheduled',
       }),
       this.outboxService.createEvent({

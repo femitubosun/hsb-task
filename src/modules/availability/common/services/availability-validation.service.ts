@@ -25,6 +25,9 @@ export class AvailabilityValidationService {
     date: Date,
   ): Promise<EffectiveHours | null> {
     const dateStr = DateBuilder.toISODateString(date);
+    const startOfDay = new Date(dateStr);
+    const endOfDay = new Date(dateStr);
+    endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
 
     const [schedule, override] = await Promise.all([
       this.scheduleRepository.findOneByCondition({
@@ -33,10 +36,31 @@ export class AvailabilityValidationService {
       }),
       this.overrideRepository.findOneByCondition({
         businessId: new Types.ObjectId(businessId),
-        date: new Date(dateStr),
+        date: { $gte: startOfDay, $lt: endOfDay },
         isActive: true,
       }),
     ]);
+
+    const IS_PROCESSING = !!schedule || !!override;
+
+    if (!IS_PROCESSING) {
+      return null;
+    }
+
+    if (override?.type === 'closed') {
+      return null;
+    }
+
+    if (override?.type === 'modified_hours') {
+      if (!override.startTime || !override.endTime) {
+        return null;
+      }
+
+      return {
+        startTime: override.startTime,
+        endTime: override.endTime,
+      };
+    }
 
     if (!schedule) {
       return null;
@@ -45,6 +69,7 @@ export class AvailabilityValidationService {
     const effectiveFromStr = DateBuilder.toISODateString(
       schedule.effectiveFrom,
     );
+
     if (dateStr < effectiveFromStr) {
       return null;
     }
@@ -58,18 +83,15 @@ export class AvailabilityValidationService {
       }
     }
 
-    const dayOfWeek = this.#getDayOfWeekName(date.getDay());
+    const dayOfWeek = this.#getDayOfWeekName(date.getUTCDay());
+
     if (!schedule.daysOfWeek.includes(dayOfWeek)) {
       return null;
     }
 
-    if (override?.type === 'closed') {
-      return null;
-    }
-
     return {
-      startTime: override?.startTime || schedule.startTime,
-      endTime: override?.endTime || schedule.endTime,
+      startTime: schedule.startTime,
+      endTime: schedule.endTime,
     };
   }
 
@@ -86,6 +108,7 @@ export class AvailabilityValidationService {
     }
 
     const bookingTime = DateBuilder.from(bookingDate).getTime();
+
     if (bookingTime < hours.startTime || bookingTime >= hours.endTime) {
       throw new BadRequestException(
         `Booking time ${bookingTime} is outside business hours (${hours.startTime} - ${hours.endTime})`,

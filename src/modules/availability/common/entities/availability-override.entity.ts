@@ -32,7 +32,7 @@ export class AvailabilityOverride extends BaseEntity {
     enum: ['closed', 'modified_hours'],
     required: true,
   })
-  type: string;
+  type: 'closed' | 'modified_hours';
 
   @Prop()
   startTime?: string;

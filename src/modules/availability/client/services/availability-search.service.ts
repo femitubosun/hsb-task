@@ -169,13 +169,24 @@ export class AvailabilitySearchService {
           bufferAfter: service.bufferAfter,
         });
 
+        const bufferBeforeMs = service.bufferBefore * 60 * 1000;
+        const bufferAfterMs = service.bufferAfter * 60 * 1000;
+
         gaps.forEach((gap) => {
-          slots.push({
-            date: dateStr,
-            startTime: DateBuilder.epochToTime(gap.start),
-            endTime: DateBuilder.epochToTime(gap.end),
-            duration: gap.duration,
-          });
+          const bookableStart = gap.start + bufferBeforeMs;
+          const bookableEnd = gap.end - bufferAfterMs;
+          const bookableDuration = Math.floor(
+            (bookableEnd - bookableStart) / (60 * 1000),
+          );
+
+          if (bookableDuration > 0) {
+            slots.push({
+              date: dateStr,
+              startTime: DateBuilder.epochToTime(bookableStart),
+              endTime: DateBuilder.epochToTime(bookableEnd),
+              duration: bookableDuration,
+            });
+          }
         });
       }
 
