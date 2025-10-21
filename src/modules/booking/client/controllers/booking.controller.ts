@@ -1,5 +1,6 @@
 import { AllowedRoles, AuthUser } from '@/common/decorators';
 import type { SessionUser } from '@/common/types/auth-session.type';
+import { DateBuilder } from '@/common/utils/date.utils';
 import {
   Body,
   Controller,
@@ -30,9 +31,10 @@ export class BookingController {
     @AuthUser() user: SessionUser,
   ): Promise<BookingResponseDto> {
     return this.bookingService.create({
-      ...body,
+      serviceId: body.serviceId,
+      startsAt: DateBuilder.fromHsbDateTime(body.dateTime).toDate(),
+      idempotencyKey: body.idempotencyKey,
       clientId: user._id,
-      startsAt: new Date(body.startsAt),
     }) as unknown as Promise<BookingResponseDto>;
   }
 
@@ -53,8 +55,8 @@ export class BookingController {
     @Body() body: RescheduleBookingRequestDto,
   ) {
     return this.bookingService.reschedule(id, user._id, {
-      ...body,
-      startsAt: new Date(body.startsAt),
+      startsAt: DateBuilder.fromHsbDateTime(body.dateTime).toDate(),
+      idempotencyKey: body.idempotencyKey,
     });
   }
 

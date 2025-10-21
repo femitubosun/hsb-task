@@ -43,12 +43,15 @@ export class AdminBookingController {
     @Body() body: RescheduleBookingRequestDto,
     @AuthUser() user: SessionUser,
   ) {
-    const { startsAt, idempotencyKey } = body;
+    const { dateTime, idempotencyKey } = body;
 
     return this.bookingService.reschedule(
       id,
       user._id,
-      { idempotencyKey, startsAt: DateBuilder.fromISO(startsAt).toDate() },
+      {
+        startsAt: DateBuilder.fromHsbDateTime(dateTime).toDate(),
+        idempotencyKey,
+      },
       true,
     );
   }
