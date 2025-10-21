@@ -12,3 +12,7 @@ export function toCamelCase(str: string): string {
       char ? char.toUpperCase() : '',
     );
 }
+
+export function tag(input: { id: string; name: string }) {
+  return `${input.name}[${input.id}]`;
+}
