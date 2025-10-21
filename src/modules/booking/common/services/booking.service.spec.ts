@@ -1,3 +1,4 @@
+import { DateBuilder } from '@/common/utils/date.utils';
 import { CacheService } from '@/lib/cache/cache.service';
 import { FetchInput } from '@/lib/cache/dto';
 import { QueueService } from '@/lib/queue/queue.service';
@@ -553,7 +554,7 @@ describe('BookingService', () => {
 
   describe('reschedule', () => {
     const rescheduleInput: RescheduleBookingRequestDto = {
-      startsAt: '2025-01-21T14:00:00Z',
+      dateTime: { date: '2025-01-21', time: '14:00' },
       idempotencyKey: '550e8400-e29b-41d4-a716-446655440001',
     };
 
@@ -563,7 +564,9 @@ describe('BookingService', () => {
       const newBooking = {
         ...mockBooking,
         _id: new Types.ObjectId(),
-        startsAt: rescheduleInput.startsAt,
+        startsAt: DateBuilder.fromHsbDateTime(
+          rescheduleInput.dateTime,
+        ).toDate(),
         idempotencyKey: rescheduleInput.idempotencyKey,
         rescheduledFrom: mockBooking._id,
       };
@@ -585,13 +588,17 @@ describe('BookingService', () => {
 
       const result = await service.reschedule(bookingId, clientId, {
         ...rescheduleInput,
-        startsAt: new Date(rescheduleInput.startsAt),
+        startsAt: DateBuilder.fromHsbDateTime(
+          rescheduleInput.dateTime,
+        ).toDate(),
       });
 
       expect(mockBookingRepository.findOneById).toHaveBeenCalledWith(bookingId);
       expect(mockBookingRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          startsAt: new Date(rescheduleInput.startsAt),
+          startsAt: DateBuilder.fromHsbDateTime(
+            rescheduleInput.dateTime,
+          ).toDate(),
           idempotencyKey: rescheduleInput.idempotencyKey,
           rescheduledFrom: mockBooking._id,
         }),
@@ -626,7 +633,9 @@ describe('BookingService', () => {
       const newBooking = {
         ...mockBooking,
         _id: new Types.ObjectId(),
-        startsAt: rescheduleInput.startsAt,
+        startsAt: DateBuilder.fromHsbDateTime(
+          rescheduleInput.dateTime,
+        ).toDate(),
       } as unknown as BookingDocument;
 
       mockBookingRepository.findOneById
@@ -641,7 +650,9 @@ describe('BookingService', () => {
 
       await service.reschedule(bookingId, clientId, {
         ...rescheduleInput,
-        startsAt: new Date(rescheduleInput.startsAt),
+        startsAt: DateBuilder.fromHsbDateTime(
+          rescheduleInput.dateTime,
+        ).toDate(),
       });
 
       expect(mockBookingRepository.create).toHaveBeenCalledWith(
@@ -660,7 +671,9 @@ describe('BookingService', () => {
       await expect(
         service.reschedule(bookingId, clientId, {
           ...rescheduleInput,
-          startsAt: new Date(rescheduleInput.startsAt),
+          startsAt: DateBuilder.fromHsbDateTime(
+            rescheduleInput.dateTime,
+          ).toDate(),
         }),
       ).rejects.toThrow(NotFoundException);
 
@@ -681,7 +694,9 @@ describe('BookingService', () => {
       await expect(
         service.reschedule(bookingId, clientId, {
           ...rescheduleInput,
-          startsAt: new Date(rescheduleInput.startsAt),
+          startsAt: DateBuilder.fromHsbDateTime(
+            rescheduleInput.dateTime,
+          ).toDate(),
         }),
       ).rejects.toThrow(NotFoundException);
 
@@ -692,7 +707,10 @@ describe('BookingService', () => {
   describe('Integration scenarios', () => {
     it('should handle complete booking lifecycle', async () => {
       const rescheduleInput: RescheduleBookingRequestDto = {
-        startsAt: '2025-01-21T14:00:00Z',
+        dateTime: {
+          date: '2025-01-21',
+          time: '14:00',
+        },
         idempotencyKey: '550e8400-e29b-41d4-a716-446655440001',
       };
 
@@ -732,7 +750,9 @@ describe('BookingService', () => {
 
       const rescheduled = await service.reschedule(bookingId, clientId, {
         ...rescheduleInput,
-        startsAt: new Date(rescheduleInput.startsAt),
+        startsAt: DateBuilder.fromHsbDateTime(
+          rescheduleInput.dateTime,
+        ).toDate(),
       });
       expect(rescheduled).toEqual(newBooking);
 

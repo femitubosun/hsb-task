@@ -1,13 +1,15 @@
-import { IsValidDate } from '@/common/validators/is-valid-date.validator';
-import { IsDateString, IsString, IsUUID } from 'class-validator';
+import { HsbDateTimeDto } from '@/common/dtos/common/hsb-date-time.dto';
+import { Type } from 'class-transformer';
+import { IsObject, IsString, IsUUID, ValidateNested } from 'class-validator';
 
 export class CreateBookingRequestDto {
   @IsString()
   serviceId: string;
 
-  @IsDateString()
-  @IsValidDate()
-  startsAt: string;
+  @IsObject()
+  @Type(() => HsbDateTimeDto)
+  @ValidateNested()
+  dateTime: HsbDateTimeDto;
 
   @IsUUID()
   idempotencyKey: string;

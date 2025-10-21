@@ -1,3 +1,5 @@
+import { HsbDateTimeDto } from '../dtos/common';
+
 export class DateBuilder {
   private date: Date;
 
@@ -116,6 +118,14 @@ export class DateBuilder {
 
   static toISODateString(date: Date): string {
     return date.toISOString().split('T')[0];
+  }
+
+  static hsbDateTimeToUTCEpoch(date: string, time: string): number {
+    return new Date(`${date}T${time}:00.000Z`).getTime();
+  }
+
+  static fromHsbDateTime(input: HsbDateTimeDto): DateBuilder {
+    return DateBuilder.from(new Date(`${input.date}T${input.time}:00.000Z`));
   }
 
   toDate() {

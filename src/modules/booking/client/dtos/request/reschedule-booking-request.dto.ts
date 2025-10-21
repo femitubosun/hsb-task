@@ -1,10 +1,12 @@
-import { IsValidDate } from '@/common/validators/is-valid-date.validator';
-import { IsDateString, IsUUID } from 'class-validator';
+import { HsbDateTimeDto } from '@/common/dtos/common/hsb-date-time.dto';
+import { Type } from 'class-transformer';
+import { IsObject, IsUUID, ValidateNested } from 'class-validator';
 
 export class RescheduleBookingRequestDto {
-  @IsDateString()
-  @IsValidDate()
-  startsAt: string;
+  @IsObject()
+  @Type(() => HsbDateTimeDto)
+  @ValidateNested()
+  dateTime: HsbDateTimeDto;
 
   @IsUUID()
   idempotencyKey: string;
