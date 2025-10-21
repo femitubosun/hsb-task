@@ -32,13 +32,13 @@ services:
       NODE_ENV: development
       DATABASE_URL: mongodb://admin:dev123@mongodb:27017/hsb_booking?authSource=admin
       REDIS_URL: redis://redis:6379
+      BULL_MQ_REDIS_URL: redis://redis:6379
     volumes:
       - .:/app
       - /app/node_modules
     depends_on:
       - mongodb
       - redis
-    command: pnpm run start:dev
 
 volumes:
   mongo_data:

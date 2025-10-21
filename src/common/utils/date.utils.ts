@@ -16,7 +16,20 @@ export class DateBuilder {
   }
 
   static utcNow() {
-    return new DateBuilder(new Date());
+    const now = new Date();
+    return new DateBuilder(
+      new Date(
+        Date.UTC(
+          now.getUTCFullYear(),
+          now.getUTCMonth(),
+          now.getUTCDate(),
+          now.getUTCHours(),
+          now.getUTCMinutes(),
+          now.getUTCSeconds(),
+          now.getUTCMilliseconds(),
+        ),
+      ),
+    );
   }
 
   static date(year: number, month: number, day: number) {

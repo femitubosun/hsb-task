@@ -1,11 +1,12 @@
 import { RESOURCE_NOT_FOUND } from '@/common/messages';
 import { DateBuilder } from '@/common/utils/date.utils';
+import { tag } from '@/common/utils/string.utils';
 import { ckMaker } from '@/lib/cache/cache-key.builder';
 import { CacheService } from '@/lib/cache/cache.service';
 import { BookingLockService } from '@/modules/booking/common/services/booking-lock.service';
 import { ServiceDocument } from '@/modules/services/common/entities/service.entity';
 import type { IServiceRepository } from '@/modules/services/common/interfaces/service-repository.interface';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Types } from 'mongoose';
 import type { AvailabilityOverride } from '../../common/entities/availability-override.entity';
 import type { AvailabilitySchedule } from '../../common/entities/availability-schedule.entity';
@@ -27,7 +28,8 @@ type BusinessConfig = {
 
 @Injectable()
 export class AvailabilitySearchService {
-  private readonly CACHE_LOOKAHEAD_DAYS = 30;
+  readonly #CACHE_LOOKAHEAD_DAYS = 30;
+  #logger = new Logger(AvailabilitySearchService.name);
 
   constructor(
     @Inject('IAvailabilityScheduleRepository')
@@ -50,6 +52,12 @@ export class AvailabilitySearchService {
       throw new NotFoundException(RESOURCE_NOT_FOUND('Service'));
     }
 
+    const startTime = performance.now();
+
+    this.#logger.log(
+      `Searching Availability for ${tag({ id: service._id.toString(), name: 'Service' })} from ${input.startDate} to ${input.endDate}`,
+    );
+
     const businessId = service.businessId.toString();
 
     const businessConfig = await this.#getBusinessConfig(businessId);
@@ -61,6 +69,10 @@ export class AvailabilitySearchService {
       new Date(input.startDate),
       new Date(input.endDate),
     );
+
+    const duration = performance.now() - startTime;
+
+    this.#logger.log(`${slots.length} Slots found in ${duration.toFixed(2)}ms`);
 
     return {
       service: {
@@ -86,7 +98,7 @@ export class AvailabilitySearchService {
       resolver: async () => {
         const now = new Date();
         const futureDate = DateBuilder.from(now)
-          .addDays(this.CACHE_LOOKAHEAD_DAYS)
+          .addDays(this.#CACHE_LOOKAHEAD_DAYS)
           .toDate();
 
         const [schedule, overrides] = await Promise.all([
@@ -149,6 +161,12 @@ export class AvailabilitySearchService {
       : endDate;
     const current = new Date(effectiveStart);
 
+    this.#logger.log(
+      `Computing Slots between ${effectiveStart.toDateString()} and ${effectiveEnd.toDateString()} `,
+    );
+
+    const startTime = performance.now();
+
     while (current <= effectiveEnd) {
       const hours =
         await this.availabilityValidationService.getEffectiveHoursForDate(
@@ -192,6 +210,12 @@ export class AvailabilitySearchService {
 
       current.setDate(current.getDate() + 1);
     }
+
+    const duration = performance.now() - startTime;
+
+    this.#logger.log(
+      `${slots.length} Slots computed in ${duration.toFixed(2)}ms`,
+    );
 
     return slots;
   }
