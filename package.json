@@ -1,8 +1,8 @@
 {
   "name": "hsb-task",
   "version": "0.0.1",
-  "description": "",
-  "author": "",
+  "description": "HSB Task",
+  "author": "Femi Olatubosun",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
