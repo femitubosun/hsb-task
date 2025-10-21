@@ -8,9 +8,20 @@ COPY package.json pnpm-lock.yaml ./
 
 RUN pnpm install --frozen-lockfile
 
+# Install netcat for the wait-for-it script
+RUN apk add --no-cache netcat-openbsd
+
+COPY entrypoint.sh wait-for-it.sh ./
+
+# Ensure correct line endings and permissions
+RUN sed -i 's/\r$//' entrypoint.sh && \
+    sed -i 's/\r$//' wait-for-it.sh && \
+    chmod +x entrypoint.sh wait-for-it.sh
 COPY . .
 
 RUN pnpm run build
+
+ENTRYPOINT ["./entrypoint.sh"]
 
 FROM node:20-alpine AS production
 
