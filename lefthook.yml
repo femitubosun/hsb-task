@@ -1,0 +1,27 @@
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      glob: "*.{js,ts}"
+      run: pnpm lint
+    format:
+      glob: "*.{js,ts}"
+      run: pnpm format
+      stage_fixed: true
+
+pre-push:
+  commands:
+    build:
+      run: pnpm build
+    test:
+      run: pnpm test
+    integration-test:
+      run: |
+        echo "🚀 Starting Docker test containers..."
+        pnpm run docker:test:up
+        echo "🧪 Running integration tests..."
+        pnpm run test:integration
+        EXIT_CODE=$?
+        echo "🧹 Cleaning up Docker containers..."
+        pnpm run docker:test:down
+        exit $EXIT_CODE

@@ -1,8 +1,8 @@
 {
   "name": "hsb-task",
   "version": "0.0.1",
-  "description": "",
-  "author": "",
+  "description": "HSB Task",
+  "author": "Femi Olatubosun",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
@@ -17,21 +17,49 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:integration": "jest --config ./test/jest-integration.json",
+    "test:integration:full": "pnpm run docker:test:up && pnpm run test:integration && pnpm run docker:test:down",
+    "test:load": "k6 run test/load-test.js",
+    "docker:dev": "docker compose up",
+    "docker:dev:build": "docker compose up --build",
+    "docker:dev:down": "docker compose down",
+    "docker:test:up": "docker compose -f docker-compose.test.yml up -d",
+    "docker:test:down": "docker compose -f docker-compose.test.yml down -v",
+    "seed": "ts-node -r tsconfig-paths/register src/seed.ts"
   },
   "dependencies": {
+    "@nestjs-labs/nestjs-redis": "^11.0.4",
+    "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.0.1",
+    "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
+    "@nestjs/jwt": "^11.0.1",
+    "@nestjs/mongoose": "^11.0.3",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/schedule": "^6.0.1",
+    "@nestjs/swagger": "^11.2.1",
+    "@nestjs/terminus": "^11.0.0",
+    "@nestjs/throttler": "^6.4.0",
+    "@scalar/nestjs-api-reference": "^1.0.5",
+    "axios": "^1.12.2",
+    "bcrypt": "^6.0.0",
+    "bullmq": "^5.61.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.2",
+    "helmet": "^8.1.0",
+    "mongoose": "^8.19.1",
+    "redis": "^5.8.3",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3.2.0",
+    "@eslint/eslintrc": "latest",
     "@eslint/js": "^9.18.0",
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
+    "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.10.7",
@@ -41,6 +69,7 @@
     "eslint-plugin-prettier": "^5.2.2",
     "globals": "^16.0.0",
     "jest": "^30.0.0",
+    "lefthook": "^1.13.6",
     "prettier": "^3.4.2",
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
@@ -59,6 +88,10 @@
     ],
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "\\.integration\\.spec\\.ts$"
+    ],
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
@@ -66,6 +99,12 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/$1",
+      "^@core/(.*)$": "<rootDir>/core/$1",
+      "^@infra/(.*)$": "<rootDir>/infra/$1",
+      "^@modules/(.*)$": "<rootDir>/modules/$1"
+    }
   }
 }
