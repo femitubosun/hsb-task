@@ -1,5 +1,6 @@
 import { AllowedRoles, AuthUser } from '@/common/decorators';
 import type { SessionUser } from '@/common/types/auth-session.type';
+import { DateBuilder } from '@/common/utils/date.utils';
 import { Body, Controller, Get, Param, Patch, Query } from '@nestjs/common';
 import { RescheduleBookingRequestDto } from '../../client/dtos/request';
 import { BookingService } from '../../common/services/booking.service';
@@ -42,6 +43,13 @@ export class AdminBookingController {
     @Body() body: RescheduleBookingRequestDto,
     @AuthUser() user: SessionUser,
   ) {
-    return this.bookingService.reschedule(id, user._id, body, true);
+    const { startsAt, idempotencyKey } = body;
+
+    return this.bookingService.reschedule(
+      id,
+      user._id,
+      { idempotencyKey, startsAt: DateBuilder.fromISO(startsAt).toDate() },
+      true,
+    );
   }
 }
