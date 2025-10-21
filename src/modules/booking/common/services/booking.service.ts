@@ -180,7 +180,10 @@ export class BookingService {
     });
   }
 
-  async findAll(filters: { clientId?: string; businessId?: string }) {
+  async findAll(
+    filters: { clientId?: string; businessId?: string },
+    options: { page?: number; limit?: number } = {},
+  ) {
     const ck = this.#getMethodCk('findAll');
 
     if (filters.clientId) {
@@ -190,6 +193,10 @@ export class BookingService {
     }
 
     const resolver = async () => {
+      const skip =
+        options.page && options.limit
+          ? (options.page - 1) * options.limit
+          : undefined;
       const result = await this.bookingRepository.findMany(
         {
           ...(filters?.clientId && {
@@ -200,6 +207,8 @@ export class BookingService {
           }),
         },
         {
+          ...(skip !== undefined && { skip }),
+          ...(options.limit && { limit: options.limit }),
           populate: [
             { path: 'business', select: 'name email phone' },
             { path: 'service', select: 'name duration price' },
@@ -216,12 +225,65 @@ export class BookingService {
     });
   }
 
-  async cancel(bookingId: string, clientId: string) {
-    const ck = this.#getMethodCk('cancel').owner(clientId).single(bookingId);
+  async listAdminBookings({
+    page,
+    limit,
+    filters,
+  }: {
+    page: number;
+    limit: number;
+    filters: {
+      businessId?: string;
+      clientId?: string;
+      status?: string;
+      startDate?: string;
+      endDate?: string;
+    };
+  }) {
+    const skip = (page - 1) * limit;
+
+    return this.bookingRepository.findMany(
+      {
+        ...(filters.businessId && {
+          businessId: new Types.ObjectId(filters.businessId),
+        }),
+        ...(filters.clientId && {
+          clientId: new Types.ObjectId(filters.clientId),
+        }),
+        ...(filters.status && {
+          status: filters.status,
+        }),
+        ...((filters.startDate || filters.endDate) && {
+          startsAt: {
+            ...(filters.startDate && { $gte: new Date(filters.startDate) }),
+            ...(filters.endDate && { $lte: new Date(filters.endDate) }),
+          },
+        }),
+      },
+      {
+        skip,
+        limit,
+        sort: { createdAt: -1 },
+        populate: [
+          { path: 'business', select: 'name email phone' },
+          { path: 'service', select: 'name duration price' },
+          { path: 'clientId', select: 'email' },
+        ],
+      },
+    );
+  }
+
+  async cancel(
+    bookingId: string,
+    userId: string,
+    reason?: string,
+    isAdmin: boolean = false,
+  ) {
+    const ck = this.#getMethodCk('cancel').owner(userId).single(bookingId);
 
     const booking = await this.bookingRepository.findOneById(bookingId);
 
-    if (!booking || booking.clientId.toString() !== clientId) {
+    if (!booking || (!isAdmin && booking.clientId.toString() !== userId)) {
       throw new NotFoundException(RESOURCE_NOT_FOUND('Booking'));
     }
 
@@ -246,13 +308,14 @@ export class BookingService {
         refundedAt: now.toDate(),
         refundAmount,
         cancellationFee,
+        cancellationReason: reason,
       }),
       this.outboxService.createEvent({
         type: OutboxEventType.BOOKING_CANCELLED,
         aggregateId: bookingId,
         payload: {
           bookingId,
-          clientId,
+          clientId: booking.clientId.toString(),
           businessId: booking.businessId.toString(),
           cancelledAt: now.toDate().toISOString(),
           refundAmount,
@@ -280,22 +343,27 @@ export class BookingService {
 
   async reschedule(
     bookingId: string,
-    clientId: string,
+    userId: string,
     input: RescheduleBookingInput,
+    isAdmin: boolean = false,
   ) {
-    const ck = this.#getMethodCk('reschedule')
-      .owner(clientId)
-      .single(bookingId);
+    const ck = this.#getMethodCk('reschedule').owner(userId).single(bookingId);
 
     const booking = await this.bookingRepository.findOneById(bookingId);
 
-    if (!booking || booking.clientId.toString() !== clientId) {
+    if (!booking || (!isAdmin && booking.clientId.toString() !== userId)) {
       throw new NotFoundException(RESOURCE_NOT_FOUND('Booking'));
+    }
+
+    if (booking.status === BookingStatus.CANCELLED) {
+      throw new BadRequestException(
+        'Cannot reschedule a cancelled booking. Please create a new booking instead.',
+      );
     }
 
     const oldBookingDate = DateBuilder.toISODateString(booking.startsAt);
 
-    const newStartsAt = DateBuilder.from(input.startsAt).toDate();
+    const newStartsAt = input.startsAt;
 
     await this.availabilityValidationService.validateBookingTime(
       booking.businessId.toString(),
@@ -357,7 +425,7 @@ export class BookingService {
         payload: {
           oldBookingId: bookingId,
           newBookingId: newBookingId.toString(),
-          clientId,
+          clientId: booking.clientId.toString(),
           businessId: booking.businessId.toString(),
           oldStartsAt: booking.startsAt.toISOString(),
           newStartsAt: newStartsAt.toISOString(),

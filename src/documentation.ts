@@ -1,7 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { apiReference } from '@scalar/nestjs-api-reference';
-import { Request, Response } from 'express';
 
 export function setupApiDocumentation(input: {
   appName: string;
@@ -16,18 +14,7 @@ export function setupApiDocumentation(input: {
 
   const document = SwaggerModule.createDocument(input.app, swaggerConfig);
 
-  input.app.use(
-    '/api/docs/ref',
-    apiReference({
-      content: document,
-    }),
-  );
-
-  input.app.use('/api/docs/json', (_: Request, res: Response) => {
-    res.json(document);
+  SwaggerModule.setup('api/docs', input.app, document, {
+    jsonDocumentUrl: 'api/docs/json',
   });
-
-  // SwaggerModule.setup('api/docs', input.app, documentFactory, {
-  //   jsonDocumentUrl: 'api/docs/json',
-  // });
 }

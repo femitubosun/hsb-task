@@ -1,3 +1,4 @@
+import { IsValidDate } from '@/common/validators/is-valid-date.validator';
 import { IsDateString, IsString, IsUUID } from 'class-validator';
 
 export class CreateBookingRequestDto {
@@ -5,6 +6,7 @@ export class CreateBookingRequestDto {
   serviceId: string;
 
   @IsDateString()
+  @IsValidDate()
   startsAt: string;
 
   @IsUUID()

@@ -15,6 +15,7 @@ import {
   CreateBookingRequestDto,
   RescheduleBookingRequestDto,
 } from '../dtos/request';
+
 import { BookingResponseDto } from '../dtos/response';
 
 @AllowedRoles(['client'])
@@ -28,14 +29,10 @@ export class BookingController {
     @Body() body: CreateBookingRequestDto,
     @AuthUser() user: SessionUser,
   ): Promise<BookingResponseDto> {
-    const startsAtUTC = body.startsAt.endsWith('Z')
-      ? body.startsAt
-      : `${body.startsAt}Z`;
-
     return this.bookingService.create({
       ...body,
       clientId: user._id,
-      startsAt: new Date(startsAtUTC),
+      startsAt: new Date(body.startsAt),
     }) as unknown as Promise<BookingResponseDto>;
   }
 
@@ -55,13 +52,9 @@ export class BookingController {
     @AuthUser() user: SessionUser,
     @Body() body: RescheduleBookingRequestDto,
   ) {
-    const startsAtUTC = body.startsAt.endsWith('Z')
-      ? body.startsAt
-      : `${body.startsAt}Z`;
-
     return this.bookingService.reschedule(id, user._id, {
       ...body,
-      startsAt: new Date(startsAtUTC),
+      startsAt: new Date(body.startsAt),
     });
   }
 

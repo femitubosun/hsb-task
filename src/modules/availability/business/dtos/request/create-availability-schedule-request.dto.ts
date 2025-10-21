@@ -1,3 +1,4 @@
+import { IsValidDateString } from '@/common/validators/is-valid-date-string.validator';
 import {
   ArrayMinSize,
   IsArray,
@@ -32,11 +33,13 @@ export class CreateAvailabilityScheduleRequestDto {
   @Matches(/^\d{4}-\d{2}-\d{2}$/, {
     message: 'effectiveFrom must be in YYYY-MM-DD format',
   })
+  @IsValidDateString()
   effectiveFrom: string;
 
   @Matches(/^\d{4}-\d{2}-\d{2}$/, {
     message: 'effectiveUntil must be in YYYY-MM-DD format',
   })
+  @IsValidDateString()
   @IsOptional()
   effectiveUntil?: string;
 }

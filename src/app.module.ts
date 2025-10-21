@@ -9,6 +9,7 @@ import { AvailabilityModule } from './modules/availability/availability.module';
 import { BookingModule } from './modules/booking/booking.module';
 import { ServicesModule } from './modules/services/services.module';
 import { OutboxModule } from './modules/outbox/outbox.module';
+import { DiscoveryModule } from './modules/discovery/discovery.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { OutboxModule } from './modules/outbox/outbox.module';
     AvailabilityModule,
     BookingModule,
     OutboxModule,
+    DiscoveryModule,
   ],
   controllers: [],
   providers: [AppService],
