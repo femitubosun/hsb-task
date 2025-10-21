@@ -1,6 +1,6 @@
-# Hot Spots Beauty - Booking & Availability Microservice
+# Hot Spots Beauty - Booking & Availability API
 
-A production-grade booking and availability microservice built with NestJS, featuring real-time slot computation, Redis-powered concurrency control, and sophisticated cache invalidation patterns.
+A booking and availability API built with NestJS, featuring real-time slot computation, Redis-powered concurrency control, and cache invalidation patterns.
 
 ## Table of Contents
 
@@ -12,6 +12,7 @@ A production-grade booking and availability microservice built with NestJS, feat
 - [Key API Flows](#key-api-flows)
 - [Environment Variables](#environment-variables)
 - [Performance Characteristics](#performance-characteristics)
+- [Concurrency Design Evolution](#concurrency-design-evolution)
 - [Design Trade-offs](#design-trade-offs)
 - [Stretch Goals Implemented](#stretch-goals-implemented)
 - [Features Not Implemented](#features-not-implemented)
@@ -20,11 +21,10 @@ A production-grade booking and availability microservice built with NestJS, feat
 - [Load Testing](#load-testing)
 - [License](#license)
 - [Author](#author)
-- [Concurrency Design Evolution](#concurrency-design-evolution)
 
 ## Architecture Overview
 
-This microservice implements a Redis-powered real-time availability system that computes free slots on-demand rather than pre-caching them. The architecture prioritizes consistency and correctness over pre-computed speed, achieving sub-50ms response times for availability queries.
+This API implements a Redis-powered real-time availability system that computes free slots on-demand rather than pre-caching them. The architecture prioritizes consistency and correctness over pre-computed speed, achieving sub-50ms response times for availability queries.
 
 ### Key Design Decisions
 
@@ -64,6 +64,7 @@ src/
 ### Repository Pattern
 
 All data access follows a consistent repository pattern defined in `src/common/repository/base.abstract.repository.ts`:
+
 - Soft delete support (deletedAt field)
 - Consistent query interfaces
 - Projection and options support
@@ -92,32 +93,38 @@ All data access follows a consistent repository pattern defined in `src/common/r
 ### Quick Start
 
 1. **Clone and install dependencies**:
+
 ```bash
 pnpm install
 ```
 
 2. **Configure environment**:
+
 ```bash
 cp .env.example .env
 ```
 
 Edit `.env` with your configuration. Key variables:
+
 - `DATABASE_URL`: MongoDB connection string
 - `REDIS_URL`: Redis connection string
 - `JWT_SECRET_KEY`: Secret for JWT signing
 - `BOOKING_EVENTS_URL`: Webhook URL for booking events
 
 3. **Start infrastructure** (MongoDB + Redis):
+
 ```bash
 pnpm run docker:dev
 ```
 
 4. **Run database migrations & seed data**:
+
 ```bash
 pnpm run seed
 ```
 
 This creates:
+
 - 1 admin user (admin@hsb.com / password123)
 - 1 business user (business@hsb.com / password123)
 - 1 client user (client@hsb.com / password123)
@@ -125,6 +132,7 @@ This creates:
 - Working hours template with availability exceptions
 
 5. **Start development server**:
+
 ```bash
 pnpm run start:dev
 ```
@@ -134,8 +142,10 @@ The API will be available at `http://localhost:5800`
 ### API Documentation
 
 Interactive API documentation is available at:
+
 - **Swagger**: http://localhost:5800/api/docs
 - **OpenAPI JSON**: http://localhost:5800/api/docs/json
+- **Postman Docs**: https://documenter.getpostman.com/view/23283058/2sB3QRn6hE
 
 A Postman collection is also included in the repository root for easy testing.
 
@@ -160,6 +170,7 @@ pnpm test:cov
 ### 1. Availability Management
 
 Businesses can define their availability using:
+
 - **Weekly schedules**: Define working hours per day of week
 - **Service buffers**: Before/after buffers to prevent back-to-back bookings
 - **Availability overrides**: Holiday closures, extended hours, one-off schedule changes
@@ -167,6 +178,7 @@ Businesses can define their availability using:
 ### 2. Real-Time Slot Computation
 
 The availability search endpoint computes available slots in real-time:
+
 - Respects working hours, buffers, and schedule overrides
 - Accounts for existing bookings
 - Uses Redis Lua scripts for atomic gap computation
@@ -177,17 +189,20 @@ The availability search endpoint computes available slots in real-time:
 ### 3. Booking Management
 
 #### Creating Bookings
+
 - Idempotent via `x-idempotency-key` header
 - Atomic Redis lock prevents double-booking
 - Price captured at booking time (immutable)
 - Automatic outbox event creation
 
 #### Rescheduling
+
 - Validates new slot availability atomically
 - Updates Redis locks
 - Records rescheduled event to outbox
 
 #### Cancellation
+
 - Calculates late cancellation fee (configurable threshold & percentage)
 - Default: 30% fee if cancelled <12 hours before start
 - Releases Redis locks
@@ -210,6 +225,7 @@ This approach guarantees zero double-bookings even under high concurrent load.
 **Single-Layer Cache**: Only provider configurations are cached (working hours, services, buffers).
 
 **Cache Invalidation**: Automatically triggered on:
+
 - Working hours update
 - Service modification
 - Availability override changes
@@ -220,11 +236,13 @@ Caching availability slots introduces complex invalidation logic. Every booking,
 ### 6. Event Outbox
 
 All booking lifecycle events are recorded to the `outbox` collection:
+
 - `BOOKING_CREATED`
 - `BOOKING_RESCHEDULED`
 - `BOOKING_CANCELLED`
 
 A background worker (BullMQ) processes events and delivers webhooks to the configured `BOOKING_EVENTS_URL` endpoint. This provides:
+
 - Reliable event delivery with retries
 - Decoupled event processing
 - Audit trail of all booking changes
@@ -232,6 +250,7 @@ A background worker (BullMQ) processes events and delivers webhooks to the confi
 ### 7. Rate Limiting
 
 API endpoints are protected with configurable rate limiting:
+
 - Default: 5 requests per 1000ms per IP
 - Configured via `THROTTLE_TTL` and `THROTTLE_LIMIT` environment variables
 - Can be adjusted on a per-route basis
@@ -249,15 +268,19 @@ Three roles with distinct permissions:
 The API is fully documented in Swagger/Postman. Here are the core flows:
 
 ### Availability Search
+
 Search for available time slots for a specific service within a date range. The system computes slots in real-time accounting for working hours, existing bookings, and configured buffers.
 
 ### Create Booking
+
 Create a new booking with idempotency support. The booking is atomically locked in Redis before being persisted to MongoDB, preventing double-bookings.
 
 ### Reschedule Booking
+
 Move an existing booking to a new time slot. The new slot availability is validated atomically and locks are updated.
 
 ### Cancel Booking
+
 Cancel a booking with automatic late cancellation fee calculation based on how close to the start time the cancellation occurs.
 
 ## Environment Variables
@@ -290,6 +313,7 @@ THROTTLE_LIMIT=5
 ## Performance Characteristics
 
 ### Availability Search
+
 - **Target**: <300ms for 7-day window
 - **Actual**: ~37ms average
 - **Breakdown**:
@@ -298,127 +322,16 @@ THROTTLE_LIMIT=5
   - Network overhead: ~5-10ms
 
 ### Booking Creation
+
 - **Average**: ~45ms
 - **Includes**: Redis lock acquisition + MongoDB write + outbox event
 
 ### Why Redis Lua?
+
 - **Atomic execution**: Entire sweepline algorithm runs atomically - no race conditions
 - **Network efficiency**: Single round-trip instead of multiple Redis commands
 - **CPU-bound**: Algorithm runs in Redis, close to the data
 - **Consistent performance**: O(n log n) where n = number of existing bookings for the provider
-
-## Design Trade-offs
-
-### What We Do
-- ✅ Real-time slot computation (no pre-caching of availability)
-- ✅ Redis-first locking with MongoDB persistence
-- ✅ Read-through cache for provider configurations only
-- ✅ Outbox pattern for reliable event delivery
-- ✅ Idempotency via request headers
-- ✅ Pessimistic locking to guarantee consistency
-
-### What We Don't Do
-- ❌ Pre-compute or cache availability slots
-- ❌ Optimistic locking (we use pessimistic via Redis)
-- ❌ Event sourcing (traditional CRUD with outbox for events)
-- ❌ Multi-provider concurrent bookings (sequential processing per provider)
-
-### Key Benefits
-- **Consistency**: Always accurate availability - no stale cache issues
-- **Simplicity**: No complex cache invalidation logic for slots
-- **Performance**: Sub-50ms queries acceptable for user-facing API
-- **Reliability**: Zero lost bookings under concurrent load
-- **Maintainability**: Clear separation of concerns, easy to reason about
-
-## Stretch Goals Implemented
-
-- ✅ Webhook delivery for booking events via outbox pattern
-- ✅ Rate limiting with configurable thresholds
-- ✅ Audit trail via outbox events
-- ⏳ Multi-resource support (foundation in place)
-- ⏳ iCal export (not implemented)
-
-## Features Not Implemented
-
-- **Audit Logs**: No dedicated, user-facing audit trail for all system actions was created.
-- **iCal Export**: Functionality to export bookings or schedules to iCal format is not available.
-- **Multi-Resource Support**: The system does not support assigning specific staff/resources (e.g., a particular stylist or room) to a service, which would require more complex conflict checks.
-
-## Areas for Improvement
-
-- **Pagination**: API responses that return lists have limited or no pagination, as the focus was on core booking functionality.
-- **Cache Invalidation**: The current cache keys are broad. More granular keys (e.g., per-business, per-day) would allow for smarter, more targeted cache invalidation.
-- **Payment Integration**: Payments are not implemented. Bookings are confirmed immediately upon creation. The refund process only marks the booking with a refund amount and date, without interacting with a payment gateway.
-- **Query Optimizations**: Further analysis could identify and optimize slow database queries, especially for complex availability searches.
-- **Configurable Webhooks**: The webhook endpoint is defined by a single environment variable. This could be improved to allow businesses to manage their own webhook configurations via the API.
-- **Outbox API**: The outbox, which stores events for webhook delivery, is not currently accessible via an API for monitoring or manual intervention.
-
-## Testing Strategy
-
-### Unit Tests
-- Service layer business logic
-- Repository operations
-- Utility functions
-- Mock external dependencies (Redis, MongoDB)
-
-### Integration Tests
-- End-to-end API flows
-- Database operations with real MongoDB
-- Redis lock behavior with real Redis
-- Concurrent booking scenarios to verify no double-bookings
-
-Run integration tests with:
-```bash
-pnpm run test:integration:full
-```
-
-This automatically:
-1. Spins up test Docker containers (isolated MongoDB + Redis)
-2. Runs the full integration test suite
-3. Tears down containers and cleans up
-
-## Load Testing
-
-This project includes a load test script using `k6` to simulate concurrent booking attempts and verify the system's performance and concurrency controls.
-
-### 1. Disable Rate Limiting
-
-Before running the load test, you must disable the global rate-limiting guard.
-
-In `src/infra/rate-limiting/rate-limiting.module.ts`, comment out the `ThrottlerGuard` provider:
-
-```typescript
-// src/infra/rate-limiting/rate-limiting.module.ts
-
-// ...
-  providers: [
-    // {
-    //   provide: APP_GUARD,
-    //   useClass: ThrottlerGuard,
-    // },
-  ],
-// ...
-```
-
-**Important:** Remember to uncomment this block after you have finished load testing to re-enable rate limiting.
-
-### 2. Run the Load Test
-
-Execute the following command from the project root. This will simulate multiple clients trying to book a service concurrently.
-
-```bash
-USER_EMAIL=client@example.com USER_PASSWORD=password123 SERVICE_ID=68f74844ea13e09420ea7e55 pnpm test:load
-```
-
-The `SERVICE_ID` can be found by running the seed script and inspecting the `services` collection in your database or by using the API to list services for the seeded business. The one provided is a default from the seed data.
-
-## License
-
-UNLICENSED - Private assessment project for Hot Spots Beauty
-
-## Author
-
-Femi Olatubosun - Technical Assessment Submission
 
 ## Concurrency Design Evolution
 
@@ -427,6 +340,7 @@ Femi Olatubosun - Technical Assessment Submission
 The core description of the problem is addressed in these two points from the assessment document.
 
 1. Performance: availability search under 300 ms for a 7‑day window.
+
 2. Concurrency: no double bookings under race conditions
 
 To begin with, the 2nd is more important. Performance can always be optimized, the core feature is to make sure double booking is impossible.
@@ -441,13 +355,7 @@ And while we are here, the `AvailabilitySchedule` definition looks like this:
 
 ```json
 {
-  "daysOfWeek": [
-    "monday",
-    "tuesday",
-    "wednesday",
-    "thursday",
-    "friday"
-  ],
+  "daysOfWeek": ["monday", "tuesday", "wednesday", "thursday", "friday"],
   "startTime": "10:00",
   "endTime": "15:00",
   "effectiveFrom": "2025-12-23"
@@ -464,9 +372,10 @@ Back to the lock. This simplified things greatly. And This meant that to prevent
 By locking the entire day, under the assumption that there are no overnight bookings, we can ensure that no two customers would book at the same time.
 
 ### Pseudocode
+
 ```ts
-const key = "businessId:2025-10-19";
-const val = "1";
+const key = 'businessId:2025-10-19';
+const val = '1';
 const ttl = 5; // seconds
 const lock = await redis.set(key, val, { NX: true, EX: ttl });
 ```
@@ -476,13 +385,16 @@ This actually works well. Provided we can solve the issue of overlaps.
 ## Detecting Overlapping Bookings Efficiently
 
 Given an existing Booking:
+
 ```json
 {
   "startTime": "12:00",
   "endTime": "13:04"
 }
 ```
+
 It cannot overlap with a new Booking:
+
 ```json
 {
   "startTime": "11:00",
@@ -491,6 +403,7 @@ It cannot overlap with a new Booking:
 ```
 
 The atomic rule for non-overlap is:
+
 ```
 new.endTime <= existing.startTime
 OR
@@ -499,18 +412,18 @@ new.startTime >= existing.endTime
 
 If neither condition holds, the two intervals overlap.
 
-The issue is that it breaks down once we have more than two bookings. We can’t compare everything against everything. We need something that works across the entire day in one pass.
+The issue is that it breaks down once we have more than two bookings. We can't compare everything against everything. We need something that works across the entire day in one pass.
 
 The insight is this: overlaps only depend on **time order**.
 
-If you line up all start and end times chronologically, you can track what’s “active” as time moves forward.
+If you line up all start and end times chronologically, you can track what's "active" as time moves forward.
 
 - `Each start adds one active booking.`
 - `Each end removes one.`
 
-Whenever the count of active bookings is greater than one, you have a conflict. When it drops back to zero, you’ve hit a free slot.
+Whenever the count of active bookings is greater than one, you have a conflict. When it drops back to zero, you've hit a free slot.
 
-That’s the logic behind the `Sweepline Algorithm` — an ordered walk through time that keeps track of how many bookings are open at each moment.
+That's the logic behind the `Sweepline Algorithm` — an ordered walk through time that keeps track of how many bookings are open at each moment.
 
 ### Sweepline Algorithm in TS for conflict detection
 
@@ -518,7 +431,7 @@ That’s the logic behind the `Sweepline Algorithm` — an ordered walk through 
 interface Booking {
   id: string;
   start: number; // epoch ms
-  end: number;   // epoch ms
+  end: number; // epoch ms
 }
 
 interface Conflict {
@@ -591,24 +504,25 @@ Two other scripts are helpers for rescheduling and swapping.
 
 When we cancel a booking we simply delete the records from those two data stores, releasing the slot to be booked.
 
-
 `booking.create`
-```ts
-   const lockAcquired = await this.bookingLockService.tryAcquireSlot({
-      businessId: service.businessId.toString(),
-      date: bookingDate,
-      start: startWithBuffer.getTime(),
-      end: endWithBuffer.getTime(),
-      bookingId: bookingId.toString(),
-    });
 
-    if (!lockAcquired) {
-      throw new BadRequestException(TIME_NOT_AVAILABLE_FOR_BOOKING);
-    }
-   // ...
+```ts
+const lockAcquired = await this.bookingLockService.tryAcquireSlot({
+  businessId: service.businessId.toString(),
+  date: bookingDate,
+  start: startWithBuffer.getTime(),
+  end: endWithBuffer.getTime(),
+  bookingId: bookingId.toString(),
+});
+
+if (!lockAcquired) {
+  throw new BadRequestException(TIME_NOT_AVAILABLE_FOR_BOOKING);
+}
+// ...
 ```
 
 `booking-lock.try-acquire-slot`
+
 ```ts
   async tryAcquireSlot(range: BookingRange): Promise<boolean> {
     const key = `bookings:${range.businessId}:${range.date}`;
@@ -630,7 +544,6 @@ When we cancel a booking we simply delete the records from those two data stores
 
 ```
 
-
 With this setup, for a 30 day window we get:
 
 ```bash
@@ -638,3 +551,123 @@ With this setup, for a 30 day window we get:
     ✓ 'p(99)<100' p(99)=27.78ms
 
 ```
+
+## Design Trade-offs
+
+### What We Do
+
+- ✅ Real-time slot computation (no pre-caching of availability)
+- ✅ Redis-first locking with MongoDB persistence
+- ✅ Read-through cache for provider configurations only
+- ✅ Outbox pattern for reliable event delivery
+- ✅ Idempotency via idempotencyKey in request body
+- ✅ Pessimistic locking to guarantee consistency
+
+### What We Don't Do
+
+- ❌ Pre-compute or cache availability slots
+- ❌ Optimistic locking (we use pessimistic via Redis)
+- ❌ Event sourcing (traditional CRUD with outbox for events)
+- ❌ Multi-provider concurrent bookings (sequential processing per provider)
+
+### Key Benefits
+
+- **Consistency**: Always accurate availability - no stale cache issues
+- **Simplicity**: No complex cache invalidation logic for slots
+- **Performance**: Sub-50ms queries acceptable for user-facing API
+- **Reliability**: Zero lost bookings under concurrent load
+- **Maintainability**: Clear separation of concerns, easy to reason about
+
+## Stretch Goals Implemented
+
+- ✅ Webhook delivery for booking events via outbox pattern
+- ✅ Rate limiting with configurable thresholds
+- ⏳ Audit trail
+- ⏳ Multi-resource support (foundation in place)
+- ⏳ iCal export (not implemented)
+
+## Features Not Implemented
+
+- **Audit Logs**: No dedicated, user-facing audit trail for all system actions was created.
+- **iCal Export**: Functionality to export bookings or schedules to iCal format is not available.
+- **Multi-Resource Support**: The system does not support assigning specific staff/resources (e.g., a particular stylist or room) to a service, which would require more complex conflict checks.
+
+## Areas for Improvement
+
+- **Pagination**: API responses that return lists have limited or no pagination, as the focus was on core booking functionality.
+- **Cache Invalidation**: The current cache keys are broad. More granular keys (e.g., per-business, per-day) would allow for smarter, more targeted cache invalidation.
+- **Payment Integration**: Payments are not implemented. Bookings are confirmed immediately upon creation. The refund process only marks the booking with a refund amount and date, without interacting with a payment gateway.
+- **Query Optimizations**: Further analysis could identify and optimize slow database queries, especially for complex availability searches.
+- **Configurable Webhooks**: The webhook endpoint is defined by a single environment variable. This could be improved to allow businesses to manage their own webhook configurations via the API.
+- **Outbox API**: The outbox, which stores events for webhook delivery, is not currently accessible via an API for monitoring or manual intervention.
+
+## Testing Strategy
+
+### Unit Tests
+
+- Service layer business logic
+- Repository operations
+- Utility functions
+- Mock external dependencies (Redis, MongoDB)
+
+### Integration Tests
+
+- End-to-end API flows
+- Database operations with real MongoDB
+- Redis lock behavior with real Redis
+- Concurrent booking scenarios to verify no double-bookings
+
+Run integration tests with:
+
+```bash
+pnpm run test:integration:full
+```
+
+This automatically:
+
+1. Spins up test Docker containers (isolated MongoDB + Redis)
+2. Runs the full integration test suite
+3. Tears down containers and cleans up
+
+## Load Testing
+
+This project includes a load test script using `k6` to simulate concurrent booking attempts and verify the system's performance and concurrency controls.
+
+### 1. Disable Rate Limiting
+
+Before running the load test, you must disable the global rate-limiting guard.
+
+In `src/infra/rate-limiting/rate-limiting.module.ts`, comment out the `ThrottlerGuard` provider:
+
+```typescript
+// src/infra/rate-limiting/rate-limiting.module.ts
+
+// ...
+  providers: [
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: ThrottlerGuard,
+    // },
+  ],
+// ...
+```
+
+**Important:** Remember to uncomment this block after you have finished load testing to re-enable rate limiting.
+
+### 2. Run the Load Test
+
+Execute the following command from the project root. This will simulate multiple clients trying to book a service concurrently.
+
+```bash
+USER_EMAIL=client@example.com USER_PASSWORD=password123 SERVICE_ID=68f74844ea13e09420ea7e55 pnpm test:load
+```
+
+The `SERVICE_ID` can be found by running the seed script and inspecting the `services` collection in your database or by using the API to list services for the seeded business. The one provided is a default from the seed data.
+
+## License
+
+UNLICENSED - Private assessment project for Hot Spots Beauty
+
+## Author
+
+Femi Olatubosun - Technical Assessment Submission
