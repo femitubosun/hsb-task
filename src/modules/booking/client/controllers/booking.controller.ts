@@ -31,9 +31,10 @@ export class BookingController {
     @AuthUser() user: SessionUser,
   ): Promise<BookingResponseDto> {
     return this.bookingService.create({
-      ...body,
-      clientId: user._id,
+      serviceId: body.serviceId,
       startsAt: DateBuilder.fromHsbDateTime(body.dateTime).toDate(),
+      idempotencyKey: body.idempotencyKey,
+      clientId: user._id,
     }) as unknown as Promise<BookingResponseDto>;
   }
 
@@ -54,8 +55,8 @@ export class BookingController {
     @Body() body: RescheduleBookingRequestDto,
   ) {
     return this.bookingService.reschedule(id, user._id, {
-      ...body,
       startsAt: DateBuilder.fromHsbDateTime(body.dateTime).toDate(),
+      idempotencyKey: body.idempotencyKey,
     });
   }
 

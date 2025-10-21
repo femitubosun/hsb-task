@@ -49,8 +49,8 @@ export class AdminBookingController {
       id,
       user._id,
       {
-        idempotencyKey,
         startsAt: DateBuilder.fromHsbDateTime(dateTime).toDate(),
+        idempotencyKey,
       },
       true,
     );

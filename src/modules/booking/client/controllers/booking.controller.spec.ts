@@ -84,7 +84,10 @@ describe('BookingController (Client)', () => {
     it('should create a new booking', async () => {
       const createDto: CreateBookingRequestDto = {
         serviceId,
-        startsAt: '2025-01-20T10:00:00Z',
+        dateTime: {
+          date: '2025-01-20',
+          time: '10:00',
+        },
         idempotencyKey,
       };
 
@@ -104,7 +107,10 @@ describe('BookingController (Client)', () => {
     it('should convert startsAt string to Date object', async () => {
       const createDto: CreateBookingRequestDto = {
         serviceId,
-        startsAt: '2025-01-20T10:00:00Z',
+        dateTime: {
+          date: '2025-01-20',
+          time: '10:00',
+        },
         idempotencyKey,
       };
 
@@ -120,7 +126,10 @@ describe('BookingController (Client)', () => {
     it('should use authenticated user as clientId', async () => {
       const createDto: CreateBookingRequestDto = {
         serviceId,
-        startsAt: '2025-01-20T10:00:00Z',
+        dateTime: {
+          date: '2025-01-20',
+          time: '10:00',
+        },
         idempotencyKey,
       };
 
@@ -171,7 +180,10 @@ describe('BookingController (Client)', () => {
   describe('reschedule', () => {
     it('should reschedule a booking', async () => {
       const rescheduleDto: RescheduleBookingRequestDto = {
-        startsAt: '2025-01-21T14:00:00Z',
+        dateTime: {
+          date: '2025-01-21',
+          time: '14:00',
+        },
         idempotencyKey: '550e8400-e29b-41d4-a716-446655440001',
       };
 
@@ -203,7 +215,10 @@ describe('BookingController (Client)', () => {
 
     it('should convert startsAt string to Date object', async () => {
       const rescheduleDto: RescheduleBookingRequestDto = {
-        startsAt: '2025-01-21T14:00:00Z',
+        dateTime: {
+          date: '2025-01-21',
+          time: '14:00',
+        },
         idempotencyKey: '550e8400-e29b-41d4-a716-446655440001',
       };
 
