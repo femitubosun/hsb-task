@@ -1,7 +1,7 @@
 import { AllowedRoles, AuthUser } from '@/common/decorators';
 import type { SessionUser } from '@/common/types/auth-session.type';
-import { Body, Controller, Get, Param, Put, Query } from '@nestjs/common';
-import type { RescheduleBookingInput } from '../../common/dtos/reschedule-booking.dto';
+import { Body, Controller, Get, Param, Patch, Query } from '@nestjs/common';
+import { RescheduleBookingRequestDto } from '../../client/dtos/request';
 import { BookingService } from '../../common/services/booking.service';
 
 @AllowedRoles(['admin'])
@@ -31,19 +31,15 @@ export class AdminBookingController {
     return this.bookingService.findById(id);
   }
 
-  @Put(':id/cancel')
-  async cancel(
-    @Param('id') id: string,
-    @Body() body: { reason?: string },
-    @AuthUser() user: SessionUser,
-  ) {
-    return this.bookingService.cancel(id, user._id, body.reason, true);
+  @Patch(':id/cancel')
+  async cancel(@Param('id') id: string, @AuthUser() user: SessionUser) {
+    return this.bookingService.cancel(id, user._id, undefined, true);
   }
 
-  @Put(':id/reschedule')
+  @Patch(':id/reschedule')
   async reschedule(
     @Param('id') id: string,
-    @Body() body: RescheduleBookingInput,
+    @Body() body: RescheduleBookingRequestDto,
     @AuthUser() user: SessionUser,
   ) {
     return this.bookingService.reschedule(id, user._id, body, true);

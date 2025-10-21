@@ -53,7 +53,6 @@ export class BookingController {
   ) {
     return this.bookingService.reschedule(id, user._id, {
       ...body,
-      startsAt: new Date(body.startsAt),
     });
   }
 
