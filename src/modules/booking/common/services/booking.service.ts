@@ -15,8 +15,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Types } from 'mongoose';
-import { RescheduleBookingRequestDto } from '../../client/dtos/request';
-import { CreateBookingInput } from '../dtos';
+import { CreateBookingInput, RescheduleBookingInput } from '../dtos';
 import { BookingStatus } from '../entities/booking.entity';
 import type { IBookingRepository } from '../interfaces/booking-repository.interface';
 import { TIME_NOT_AVAILABLE_FOR_BOOKING } from '../messages';
@@ -345,7 +344,7 @@ export class BookingService {
   async reschedule(
     bookingId: string,
     userId: string,
-    input: RescheduleBookingRequestDto,
+    input: RescheduleBookingInput,
     isAdmin: boolean = false,
   ) {
     const ck = this.#getMethodCk('reschedule').owner(userId).single(bookingId);
@@ -364,7 +363,7 @@ export class BookingService {
 
     const oldBookingDate = DateBuilder.toISODateString(booking.startsAt);
 
-    const newStartsAt = DateBuilder.fromISO(input.startsAt).toDate();
+    const newStartsAt = input.startsAt;
 
     await this.availabilityValidationService.validateBookingTime(
       booking.businessId.toString(),

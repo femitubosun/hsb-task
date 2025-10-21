@@ -583,16 +583,15 @@ describe('BookingService', () => {
       mockQueueService.enqueueJob.mockResolvedValue(undefined);
       mockCacheService.invalidateByTag.mockResolvedValue(undefined);
 
-      const result = await service.reschedule(
-        bookingId,
-        clientId,
-        rescheduleInput,
-      );
+      const result = await service.reschedule(bookingId, clientId, {
+        ...rescheduleInput,
+        startsAt: new Date(rescheduleInput.startsAt),
+      });
 
       expect(mockBookingRepository.findOneById).toHaveBeenCalledWith(bookingId);
       expect(mockBookingRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          startsAt: rescheduleInput.startsAt,
+          startsAt: new Date(rescheduleInput.startsAt),
           idempotencyKey: rescheduleInput.idempotencyKey,
           rescheduledFrom: mockBooking._id,
         }),
@@ -640,7 +639,10 @@ describe('BookingService', () => {
       mockQueueService.enqueueJob.mockResolvedValue(undefined);
       mockCacheService.invalidateByTag.mockResolvedValue(undefined);
 
-      await service.reschedule(bookingId, clientId, rescheduleInput);
+      await service.reschedule(bookingId, clientId, {
+        ...rescheduleInput,
+        startsAt: new Date(rescheduleInput.startsAt),
+      });
 
       expect(mockBookingRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -656,7 +658,10 @@ describe('BookingService', () => {
       mockBookingRepository.findOneById.mockResolvedValue(null);
 
       await expect(
-        service.reschedule(bookingId, clientId, rescheduleInput),
+        service.reschedule(bookingId, clientId, {
+          ...rescheduleInput,
+          startsAt: new Date(rescheduleInput.startsAt),
+        }),
       ).rejects.toThrow(NotFoundException);
 
       expect(mockBookingRepository.create).not.toHaveBeenCalled();
@@ -674,7 +679,10 @@ describe('BookingService', () => {
       );
 
       await expect(
-        service.reschedule(bookingId, clientId, rescheduleInput),
+        service.reschedule(bookingId, clientId, {
+          ...rescheduleInput,
+          startsAt: new Date(rescheduleInput.startsAt),
+        }),
       ).rejects.toThrow(NotFoundException);
 
       expect(mockBookingRepository.create).not.toHaveBeenCalled();
@@ -722,11 +730,10 @@ describe('BookingService', () => {
         status: BookingStatus.CANCELLED,
       } as BookingDocument);
 
-      const rescheduled = await service.reschedule(
-        bookingId,
-        clientId,
-        rescheduleInput,
-      );
+      const rescheduled = await service.reschedule(bookingId, clientId, {
+        ...rescheduleInput,
+        startsAt: new Date(rescheduleInput.startsAt),
+      });
       expect(rescheduled).toEqual(newBooking);
 
       expect(mockBookingRepository.create).toHaveBeenCalledTimes(2);
