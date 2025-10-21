@@ -289,7 +289,7 @@ export class BookingService {
 
     const bookingDate = DateBuilder.toISODateString(booking.startsAt);
 
-    const now = DateBuilder.now();
+    const now = DateBuilder.utcNow();
     const twelveHoursBeforeBooking = DateBuilder.from(
       booking.startsAt,
     ).removeHours(12);

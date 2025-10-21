@@ -5,6 +5,7 @@ import { connect, Connection, Types } from 'mongoose';
 import { createClient, RedisClientType } from 'redis';
 import { TestDataFactory } from '../../../../../test/helpers/test-data-factory';
 import { TimeHelpers } from '../../../../../test/helpers/time-helpers';
+import { DateBuilder } from '@/common/utils/date.utils';
 import { BookingLockService } from './booking-lock.service';
 import { BookingService } from './booking.service';
 
@@ -472,6 +473,18 @@ describe('BookingService Integration Tests', () => {
     });
   });
 
+  beforeAll(() => {
+    jest
+      .spyOn(DateBuilder, 'utcNow')
+      .mockReturnValue(
+        DateBuilder.from(TimeHelpers.utcDate(2025, 10, 21, 18, 0)),
+      );
+  });
+
+  afterAll(() => {
+    jest.restoreAllMocks();
+  });
+
   describe('Cancel Booking Tests', () => {
     it('should cancel booking and release Redis lock', async () => {
       const booking = await bookingService.create({
@@ -496,9 +509,7 @@ describe('BookingService Integration Tests', () => {
     });
 
     it('should calculate cancellation fee for late cancellations', async () => {
-      const now = new Date();
-      const nearFutureDate = new Date(now.getTime() + 6 * 60 * 60 * 1000);
-      nearFutureDate.setUTCHours(14, 0, 0, 0);
+      const nearFutureDate = TimeHelpers.utcDate(2025, 10, 21, 16, 0);
 
       const booking = await bookingService.create({
         clientId,
@@ -516,9 +527,7 @@ describe('BookingService Integration Tests', () => {
     });
 
     it('should provide full refund for early cancellations', async () => {
-      const now = new Date();
-      const farFutureDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-      farFutureDate.setUTCHours(14, 0, 0, 0);
+      const farFutureDate = TimeHelpers.utcDate(2025, 11, 4, 10, 0);
 
       const booking = await bookingService.create({
         clientId,
