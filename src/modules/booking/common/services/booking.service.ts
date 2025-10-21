@@ -293,6 +293,12 @@ export class BookingService {
       throw new NotFoundException(RESOURCE_NOT_FOUND('Booking'));
     }
 
+    if (booking.status === BookingStatus.CANCELLED) {
+      throw new BadRequestException(
+        'Cannot reschedule a cancelled booking. Please create a new booking instead.',
+      );
+    }
+
     const oldBookingDate = DateBuilder.toISODateString(booking.startsAt);
 
     const newStartsAt = DateBuilder.from(input.startsAt).toDate();

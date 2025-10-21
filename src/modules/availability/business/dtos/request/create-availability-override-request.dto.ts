@@ -1,3 +1,4 @@
+import { IsValidDateString } from '@/common/validators/is-valid-date-string.validator';
 import { Type } from 'class-transformer';
 import {
   IsEnum,
@@ -32,6 +33,7 @@ export class CreateAvailabilityOverrideRequestDto {
   @Matches(/^\d{4}-\d{2}-\d{2}$/, {
     message: 'date must be in YYYY-MM-DD format',
   })
+  @IsValidDateString()
   date: string;
 
   @IsEnum(OverrideType)

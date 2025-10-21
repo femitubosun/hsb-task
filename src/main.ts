@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { ConfigService } from './core/config/config.service';
+import { NodeEnvironment } from './core/config/env/env.schema';
 import { setupApiDocumentation } from './documentation';
 
 async function bootstrap() {
@@ -12,10 +13,21 @@ async function bootstrap() {
 
   const appName = configService.env('APP_NAME');
   const port = configService.env('PORT');
+  const nodeEnv = configService.env('NODE_ENV');
+
+  const isDevelopment = nodeEnv !== NodeEnvironment.Production;
 
   app.setGlobalPrefix('api/v1', {
-    exclude: ['/api/docs/json', '/api/docs/ref'],
+    exclude: isDevelopment ? ['/api/docs', '/api/docs/json'] : [],
   });
+
+  if (isDevelopment) {
+    setupApiDocumentation({
+      appName,
+      app,
+      version: '1.0',
+    });
+  }
 
   app.use(helmet());
 
@@ -26,11 +38,6 @@ async function bootstrap() {
       transform: true,
     }),
   );
-  setupApiDocumentation({
-    appName,
-    app,
-    version: '1.0',
-  });
 
   logger.log(`Running on PORT ${port}`);
 
