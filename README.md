@@ -578,6 +578,14 @@ With this setup, for a 30 day window we get:
 - **Reliability**: Zero lost bookings under concurrent load
 - **Maintainability**: Clear separation of concerns, easy to reason about
 
+### Key Tradeoffs
+
+- **Redis Dependency**: Single point of failure - system unavailable if Redis fails
+- **Network Overhead**: Multiple Redis round-trips per booking operation
+- **Provider Bottlenecks**: High-volume providers create contention on shared Redis keys
+- **Rescheduling Complexity**: Atomic time slot swaps require multiple Redis operations
+- **Memory Scaling**: Redis memory grows with total bookings, requiring cleanup jobs
+
 ## Stretch Goals Implemented
 
 - ✅ Webhook delivery for booking events via outbox pattern
